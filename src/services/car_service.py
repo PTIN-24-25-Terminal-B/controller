@@ -23,6 +23,22 @@ def get_car_by_id(car_id: int):
         "completedRuns": car.completedRuns
     }
 
+def get_all_cars():
+    #Mirar si hi ha cotxes a la "base de dades"
+    if not cars_db:
+        raise HTTPException(status_code=404, detail="No cars found in database")
+    #Retorna una llista amb tots els cotxes i tota la seva info
+    return [
+        {
+            "id": car.id,
+            "carType": car.carType,
+            "seatCount": car.seatCount,
+            "mileage": car.mileage,
+            "completedRuns": car.completedRuns
+        }
+        for car in cars_db
+    ]
+
 def update_car(car_id: int, updated_data: dict):
     #Camps que es poden modificar, verificació
     allowed_fields = {"carType", "seatCount", "mileage", "completedRuns"}
