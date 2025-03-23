@@ -8,7 +8,7 @@ print("hello world")
 
 @router.get("/")
 def get_cars():
-    return {"message": "List of cars"}
+    return car_service.get_all_cars()
 
 @router.get("/{car_id}")
 def get_car(car_id: int):
