@@ -1,4 +1,4 @@
-from models.carModel import carModel
+from models.car_model import carModel
 
 carId = 1234
 
