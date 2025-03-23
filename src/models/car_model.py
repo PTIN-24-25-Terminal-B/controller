@@ -33,3 +33,12 @@ class carModel:
     
     def __del__(self):
         return
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "carType": self.carType,
+            "seatCount": self.seatCount,
+            "mileage": self.mileage,
+            "completedRuns": self.completedRuns
+        }
