@@ -161,25 +161,3 @@ create_car({"carType": "SUV", "seatCount": 5})
     "message": "Car 1 deleted"
 }
 ```
-
----
-
-## Estructura de la Base de Dades
-
-- **Variable**: `cars_db` (llista d'objectes `carModel`).
-- **Camps de cada Cotxe**:
-  ```python
-  class carModel:
-      id: int
-      carType: str
-      seatCount: int
-      mileage: float
-      completedRuns: int
-  ```
-
----
-
-## Errors Comuns
-
-- **404 Not Found**: Quan no es troba un cotxe o la base de dades està buida.
-- **400 Bad Request**: Quan es proporcionen camps no vàlids o falten camps obligatoris.
