@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from dataclasses import dataclass, asdict
 from typing import List
+import string
 import json
 import redis
 
@@ -13,7 +14,8 @@ def toPoint(x: float,y: float):
     return Point(x, y)
 
 class path :
-    def __init__(self, path: List[Point]):
+    def __init__(self, pathId: string, path: List[Point]):
+        self.id = pathId
         self.coordList = path
         return
     
@@ -22,7 +24,7 @@ class path :
             "points": [asdict(p) for p in self.points]
         }, indent=4)
 
-    def __delattr__(self):
+    def __delattr__(self):       
         return
     
     def addPoint(self, newPoint: Point):
