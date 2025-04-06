@@ -65,3 +65,18 @@ def get_car(car_id: str, redis_conn):
         working=car_dict["working"],
         currentPath=current_path
     )
+
+def save_car(car: Car, redis_conn):
+    key = f"car:{car.id}"
+    car_data = json.dumps({
+        "id": car.id,
+        "batery": car.batery,
+        "position": {"x": car.position.x, "y": car.position.y},
+        "working": car.working,
+        "currentPath": {
+            "id": car.currentPath.id,
+            "points": [{"x": p.x, "y": p.y} for p in car.currentPath.path]
+        } if car.currentPath else None
+    }, indent=4)
+    redis_conn.set(key, car_data)
+    return car
