@@ -36,4 +36,19 @@ def delete_path(path_id: str):
         return {"message": f"Recorregut {path_id} eliminado correctamente."}
     else:
         raise HTTPException(status_code=404, detail="Recorregut no encontrado")
-    
+
+def read_path(path_id: str):
+    try:
+        
+        if path_id not in paths_repo:
+            raise HTTPException(status_code=404, detail="Recorregut no encontrado")
+
+        r = redis.Redis(host='localhost', port=6379, db=0)  # placeholder db connection
+
+        path_data = paths_repo[path_id]  
+
+        return JSONResponse(content={"path_id": path_id, "data": path_data}, status_code=200)
+    except HTTPException as e:
+        return e
+    except Exception as e:
+        return HTTPException(status_code=500, detail=str(e))
