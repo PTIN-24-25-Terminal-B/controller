@@ -1,0 +1,8 @@
+from fastapi import APIRouter
+from controllers import path_controller
+
+router = APIRouter(prefix="/paths", tags=["Paths"])
+
+@router.post("/")
+async def get_cars(x0: float, y0: float, x1:float, y1: float):      #Looking for a way to recieve the data, not finished
+    return path_controller.create_path

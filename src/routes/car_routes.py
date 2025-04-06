@@ -1,10 +1,7 @@
 from fastapi import APIRouter
-from ..models.car_model import carModel
-from ..services import car_service
+from ..controllers import car_controller
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
-
-print("hello world")
 
 @router.get("/")
 def get_cars():

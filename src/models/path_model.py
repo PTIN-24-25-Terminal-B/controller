@@ -54,3 +54,13 @@ class Path:
         else:
             print("list is shorter than index")
         return self  # Enables method chaining
+
+
+def create_path(newPath: Path, redis_conn):
+        key = f"path:{newPath.id}"
+        value = json.dumps({
+            "id": newPath.id,
+            "points": [asdict(p) for p in newPath.path]
+        })
+        redis_conn.set(key, value)
+        return newPath
