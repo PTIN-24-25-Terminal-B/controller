@@ -64,3 +64,21 @@ def create_path(newPath: Path, redis_conn):
         })
         redis_conn.set(key, value)
         return newPath
+
+def read_all_paths(redis_conn):
+    try:
+        # Obtenir totes les claus que comencen amb 'path:'
+        keys = redis_conn.keys('path:*')
+        
+        paths = []
+        for key in keys:
+            # Obtenir el valor de cada clau
+            path_data = redis_conn.get(key)
+            if path_data:
+                # Convertir de JSON a diccionari
+                path_dict = json.loads(path_data)
+                paths.append(path_dict)
+        
+        return paths
+    except Exception as e:
+        raise ValueError(f"Error reading paths from Redis: {str(e)}")
