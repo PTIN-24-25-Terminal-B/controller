@@ -1,49 +1,38 @@
 import json
+from models.path_model import Point, Path
 
-class carModel:
+class Car:
     # variable types: carModel(integer, string, string, float, integer)
-    def __init__(self, carType, seatCount, id=None, mileage=0.0, completedRuns=0):
+    def __init__(self, id: str, batery: float, position: Point, working: bool, currentPath: Path=None):
         self.id = id
-        self.seatCount = seatCount
-        self.carType = carType
-        self.mileage = mileage
-        self.completedRuns = completedRuns
-        return
+        self.batery = batery
+        self.position = position
+        self.working = working
+        self.currentPath = currentPath
     
     # when reading the class as a string, returns de data in the model in json format
     def __str__(self):
-        return json.dumps(self.__dict__, indent=4)
-    
-    # adds a new completed run, including it's length in the car mileage
-    def completeRun(self, miles=0.0):
-        self.mileage+=miles
-        self.completedRuns+=1
-        return
+        return json.dumps({
+            "id": self.id,
+            "batery": self.batery,
+            "position": self.position.to_dict(),
+            "working": self.working,
+            "currentPath": self.currentPath.to_dict() if self.currentPath else None
+        }, indent=4)
     
     # allows to modify any of the stored data in the car model. Warning, changing it's id might create some errors
     # like the target car not being found, or modifying the values of another car
-    def modifyCar(self, newId=None, newType=None, newSeat=None, newMileage=None, newRuns=None):
-        if newId is not None:
-            self.id = newId
-        if newType is not None:
-            self.carType = newType
-        if newSeat is not None:
-            self.seatCount = newSeat
-        if newMileage is not None:
-            self.mileage = newMileage
-        if newRuns is not None:
-            self.completedRuns = newRuns
-        return
+    def modifyCar(self, newBatery:float = None, newPosition: Point = None, working: bool = None, currentPath: Path = None):
+        if newBatery is not None:
+            self.batery = newBatery
+        if newPosition is not None:
+            self.position = newPosition
+        if working is not None:
+            self.working = working
+        if currentPath is not None:
+            self.mileage = currentPath
+        return self
     
     # method to delete the car model
     def __del__(self):
         return
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "carType": self.carType,
-            "seatCount": self.seatCount,
-            "mileage": self.mileage,
-            "completedRuns": self.completedRuns
-        }
