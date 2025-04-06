@@ -36,3 +36,8 @@ class Car:
     # method to delete the car model
     def __del__(self):
         return
+    
+def delete_car(car_id: str, redis_conn):
+    key = f"car:{car_id}"
+    return redis_conn.delete(key)  # Retorna 1 si s'esborra, 0 si no existeix
+
