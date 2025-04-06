@@ -36,14 +36,22 @@ def read_all_paths():
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))
         
-# Repositorio de recorruts
-# Pot ser subsituit per accés una BD de Redis
-paths_repo = {}
-
 def delete_path(path_id: str):
-    if path_id in paths_repo:
-        del paths_repo[path_id]
-        return {"message": f"Recorregut {path_id} eliminado correctamente."}
-    else:
-        raise HTTPException(status_code=404, detail="Recorregut no encontrado")
-    
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        deleted_count = path_model.delete_path(path_id, r)
+        
+        if deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Path not found")
+            
+        return JSONResponse(
+            content={"message": "Path deleted successfully"},
+            status_code=200
+        )
+    except HTTPException as he:
+        return he
+    except Exception as e:
+        return HTTPException(
+            status_code=500,
+            detail=f"Error deleting path: {str(e)}"
+        )
