@@ -64,3 +64,7 @@ def create_path(newPath: Path, redis_conn):
         })
         redis_conn.set(key, value)
         return newPath
+
+def delete_path(path_id: str, redis_conn):
+    key = f"path:{path_id}"
+    return redis_conn.delete(key)  # Retorna 1 si s'esborra, 0 si no existeix
