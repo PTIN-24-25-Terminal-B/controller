@@ -80,3 +80,39 @@ def save_car(car: Car, redis_conn):
     }, indent=4)
     redis_conn.set(key, car_data)
     return car
+
+def get_all_cars(redis_conn):
+    car_keys = redis_conn.keys("car:*")
+    cars = []
+    
+    for key in car_keys:
+        car_data = redis_conn.get(key)
+        if car_data:
+            car_dict = json.loads(car_data)
+            
+            # Convertir datos a objetos del modelo
+            position = Point(
+                x=car_dict["position"]["x"],
+                y=car_dict["position"]["y"]
+            )
+            
+            current_path = None
+            if car_dict.get("currentPath"):
+                path_points = [
+                    Point(x=p["x"], y=p["y"]) 
+                    for p in car_dict["currentPath"]["points"]
+                ]
+                current_path = Path(
+                    pathId=car_dict["currentPath"]["id"],
+                    path=path_points
+                )
+                
+            cars.append(Car(
+                id=car_dict["id"],
+                batery=car_dict["batery"],
+                position=position,
+                working=car_dict["working"],
+                currentPath=current_path
+            ))
+    
+    return cars

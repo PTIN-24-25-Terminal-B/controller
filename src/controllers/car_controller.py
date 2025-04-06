@@ -107,3 +107,31 @@ def edit_car(car_id: str, update_data: dict = Body(...)):
         return he
     except Exception as e:
         return HTTPException(status_code=500, detail=f"Error updating car: {str(e)}")
+
+def get_all_cars():
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        cars = car_model.get_all_cars(r)
+        
+        # Convertir lista de objetos Car a JSON
+        cars_data = []
+        for car in cars:
+            car_json = {
+                "id": car.id,
+                "batery": car.batery,
+                "position": {"x": car.position.x, "y": car.position.y},
+                "working": car.working,
+                "currentPath": {
+                    "id": car.currentPath.id,
+                    "points": [{"x": p.x, "y": p.y} for p in car.currentPath.path]
+                } if car.currentPath else None
+            }
+            cars_data.append(car_json)
+        
+        return JSONResponse(content={"cars": cars_data}, status_code=200)
+    
+    except Exception as e:
+        return HTTPException(
+            status_code=500,
+            detail=f"Error retrieving cars: {str(e)}"
+        )

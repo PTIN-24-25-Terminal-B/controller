@@ -15,3 +15,7 @@ async def get_car_endpoint(car_id: str):
 @router.put("/{car_id}")
 async def update_car_endpoint(car_id: str, update_data: dict = Body(...)):
     return car_controller.edit_car(car_id, update_data)
+
+@router.get("/")
+async def get_all_cars_endpoint():
+    return car_controller.get_all_cars()
