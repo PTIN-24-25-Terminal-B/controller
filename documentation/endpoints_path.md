@@ -106,3 +106,109 @@ def create_path(newPath: Path, redis_conn):
     "detail": "Error reading adding path to database: connection refused"
 }
 ```
+
+---
+
+## `read_all_paths()`
+
+**Propòsit**: Recuperar totes les rutes emmagatzemades al sistema.  
+**Flux de treball**: `request ➜ route ➜ controller ➜ model ➜ controller ➜ response`
+
+---
+
+### 1. **Request**
+
+**Mètode HTTP**: `GET`  
+**Endpoint**: `/paths/`  
+**Paràmetres**: Cap
+
+---
+
+### 2. **Route Layer**
+
+```python
+@router.get("/")
+async def get_all_paths():
+    return path_controller.read_all_paths()
+```
+
+- Gestiona les peticions GET a l'endpoint base.
+- Crida al controlador `read_all_paths` sense necessitat de paràmetres.
+
+---
+
+### 3. **Controller Layer**
+
+```python
+def read_all_paths():
+    ...
+```
+
+**Funcionament**:
+
+1. **Connexió a Redis**:
+   - Estableix la connexió amb Redis (mateixa configuració que `create_path`).
+
+2. **Recuperació de dades**:
+   - Crida a `path_model.read_all_paths()` per obtenir totes les rutes.
+
+3. **Resposta**:
+   - Retorna les rutes en format JSON amb codi `HTTP 200` si té èxit.
+   - Captura i retorna errors interns amb codi `HTTP 500`.
+
+---
+
+### 4. **Model Layer**
+
+```python
+def read_all_paths(redis_conn):
+    ...
+```
+
+**Funcionament**:
+
+1. **Consulta a Redis**:
+   - Busca totes les claus amb patró `path:*` mitjançant `.keys()`.
+   - Per cada clau, obté el valor serialitzat en JSON.
+
+2. **Processament**:
+   - Desserialitza cada ruta de JSON a diccionari Python.
+   - Afegeix les rutes a una llista de retorn.
+
+**Error Handling**:
+- Si hi ha errors en la connexió o consulta, llança `ValueError`.
+
+---
+
+### 5. **Resposta Exemple**
+
+**Èxit** (`HTTP 200`):
+
+```json
+{
+    "paths": [
+        {
+            "id": "path123",
+            "points": [
+                {"x": 10.5, "y": 20.3},
+                {"x": 11.2, "y": 21.0}
+            ]
+        },
+        {
+            "id": "path456",
+            "points": [
+                {"x": 15.0, "y": 25.5},
+                {"x": 16.0, "y": 26.5}
+            ]
+        }
+    ]
+}
+```
+
+**Error Intern** (`HTTP 500`):
+
+```json
+{
+    "detail": "Error reading paths from Redis: connection timeout"
+}
+```
