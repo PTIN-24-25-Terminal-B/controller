@@ -1,28 +1,17 @@
 from fastapi import APIRouter
+from fastapi import Body
 from ..controllers import car_controller
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
-@router.get("/")
-def get_cars():
-    return car_service.get_all_cars()
+@router.delete("/{car_id}")
+async def delete_car_endpoint(car_id: str):
+    return car_controller.delete_car(car_id)
 
 @router.get("/{car_id}")
-def get_car(car_id: int):
-    return car_service.get_car_by_id(car_id)
+async def get_car_endpoint(car_id: str):
+    return car_controller.get_car(car_id)
 
 @router.put("/{car_id}")
-def update_car(car_id: int, updated_data: dict):
-    return car_service.update_car(car_id, updated_data)
-
-@router.post("/")
-def add_car(car_data: dict):
-    return car_service.create_car(car_data)
-
-@router.patch("/{car_id}")
-def partial_update_car(car_id: int, updated_data: dict):
-    return car_service.partial_update_car(car_id, updated_data)
-
-@router.delete("/{car_id}")
-def delete_car(car_id: int):
-    return car_service.delete_car(car_id)
+async def update_car_endpoint(car_id: str, update_data: dict = Body(...)):
+    return car_controller.edit_car(car_id, update_data)
