@@ -26,7 +26,7 @@ path1.delPoint(1)
 
 print(path1)
 
-car1 = Car("", 1.1, path_model.toPoint(1.1, 2.2), False, path1)
+car1 = Car("", 1.1, path_model.toPoint(1.1, 2.2), True, path1)
 
 print("here is car print:")
 
