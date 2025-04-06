@@ -82,6 +82,7 @@ def read_all_paths(redis_conn):
         return paths
     except Exception as e:
         raise ValueError(f"Error reading paths from Redis: {str(e)}")
+        
 def delete_path(path_id: str, redis_conn):
     key = f"path:{path_id}"
     return redis_conn.delete(key)  # Retorna 1 si s'esborra, 0 si no existeix
