@@ -1,0 +1,7 @@
+para ejecutar la base de datos:
+    sqlite3 dataBase_test.db
+
+para ver como esta creada, mirar en el dataBase_test.sql
+
+si se edita algo en el .sql, se tiene que actualizar el .db:
+    sqlite3 dataBase_test.db < dataBase_test.sql
