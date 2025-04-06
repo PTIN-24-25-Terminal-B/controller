@@ -1,32 +1,56 @@
-from fastapi import HTTPException
-from dataclasses import dataclass, asdict
-from typing import List
-import string
-import json
-import redis
+# Import required modules
+from fastapi import HTTPException           # For handling HTTP-related errors (not used in this snippet)
+from dataclasses import dataclass, asdict   # For creating simple data containers and converting them to dicts
+import json                                 # For converting Python objects to JSON strings
+import redis                                # For interacting with a Redis database (currently unused)
 
+# Represents a 2D point with float coordinates
 @dataclass
 class Point:
     x: float
     y: float
 
-def toPoint(x: float,y: float):
+    def __str__(self):
+        return json.dumps(asdict(self))
+
+# Factory function to create a Point instance
+def toPoint(x: float, y: float):
     return Point(x, y)
 
-class path :
-    def __init__(self, pathId: string, path: List[Point]):
-        self.id = pathId
-        self.coordList = path
-        return
-    
+# Represents a path made of multiple Point objects
+class Path:
+    def __init__(self, pathId: str, path: list[Point]):
+        self.id = pathId       # Unique identifier for the path
+        self.path = path       # Internal list of Point objects
+
+    # String representation of the path in JSON format
     def __str__(self):
         return json.dumps({
-            "points": [asdict(p) for p in self.points]
+            "id": self.id,
+            "points": [asdict(p) for p in self.path]
         }, indent=4)
 
-    def __delattr__(self):       
+    # Destructor method (not doing anything currently)
+    def __del__(self):       
         return
-    
+
+    # Add a new point to the path
     def addPoint(self, newPoint: Point):
-        self.coordList.append(Point)
-        return path
+        self.path.append(newPoint)
+        return self  # Enables method chaining
+
+    # Replace the point at a given index with a new one
+    def changePoint(self, index: int, pointToChange: Point):
+        if index < len(self.path):
+            self.path[index] = pointToChange
+        else:
+            print("list is shorter than index")
+        return self  # Enables method chaining
+
+    # Delete the point at the specified index
+    def delPoint(self, index):
+        if index < len(self.path):
+            del self.path[index]
+        else:
+            print("list is shorter than index")
+        return self  # Enables method chaining
