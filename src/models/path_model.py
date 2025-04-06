@@ -12,6 +12,9 @@ class Point:
 
     def __str__(self):
         return json.dumps(asdict(self))
+    
+    def to_dict(self):
+        return asdict(self)
 
 # Factory function to create a Point instance
 def toPoint(x: float, y: float):
@@ -29,6 +32,12 @@ class Path:
             "id": self.id,
             "points": [asdict(p) for p in self.path]
         }, indent=4)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "points": [p.to_dict() for p in self.path]
+        }
 
     # Destructor method (not doing anything currently)
     def __del__(self):       
@@ -57,6 +66,7 @@ class Path:
 
 
 def create_path(newPath: Path, redis_conn):
+    try:
         key = f"path:{newPath.id}"
         value = json.dumps({
             "id": newPath.id,
@@ -64,6 +74,8 @@ def create_path(newPath: Path, redis_conn):
         })
         redis_conn.set(key, value)
         return newPath
+    except Exception as e:
+        return ValueError(f"Error reading adding path to database: {str(e)}")
 
 def read_all_paths(redis_conn):
     try:
@@ -81,7 +93,8 @@ def read_all_paths(redis_conn):
         
         return paths
     except Exception as e:
-        raise ValueError(f"Error reading paths from Redis: {str(e)}")
+        return ValueError(f"Error reading paths from database: {str(e)}")
+
 def delete_path(path_id: str, redis_conn):
     key = f"path:{path_id}"
     return redis_conn.delete(key)  # Retorna 1 si s'esborra, 0 si no existeix
