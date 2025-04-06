@@ -10,3 +10,7 @@ async def get_cars(x0: float, y0: float, x1:float, y1: float):      #Looking for
 @router.delete("/paths/{path_id}")
 async def delete_path_endpoint(path_id: str):
     return path_controller.delete_path(path_id)
+
+@router.get("/paths/{path_id}")
+async def read_path_endpoint(path_id: str):
+    return path_controller.read_path(path_id)
