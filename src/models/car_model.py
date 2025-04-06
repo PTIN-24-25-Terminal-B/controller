@@ -41,3 +41,27 @@ def delete_car(car_id: str, redis_conn):
     key = f"car:{car_id}"
     return redis_conn.delete(key)  # Retorna 1 si s'esborra, 0 si no existeix
 
+def get_car(car_id: str, redis_conn):
+    key = f"car:{car_id}"
+    car_data = redis_conn.get(key)
+    
+    if not car_data:
+        return None
+    
+    car_dict = json.loads(car_data)
+    
+    # Convertir datos crudos a objetos del modelo
+    position = Point(x=car_dict["position"]["x"], y=car_dict["position"]["y"])
+    
+    current_path = None
+    if car_dict.get("currentPath"):
+        path_points = [Point(x=p["x"], y=p["y"]) for p in car_dict["currentPath"]["points"]]
+        current_path = Path(pathId=car_dict["currentPath"]["id"], path=path_points)
+    
+    return Car(
+        id=car_dict["id"],
+        batery=car_dict["batery"],
+        position=position,
+        working=car_dict["working"],
+        currentPath=current_path
+    )

@@ -7,3 +7,6 @@ router = APIRouter(prefix="/cars", tags=["Cars"])
 async def delete_car_endpoint(car_id: str):
     return car_controller.delete_car(car_id)
 
+@router.get("/{car_id}")
+async def get_car_endpoint(car_id: str):
+    return car_controller.get_car(car_id)
