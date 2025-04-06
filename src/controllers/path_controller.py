@@ -13,3 +13,9 @@ def delete_path(path_id: str):
         return {"message": f"Recorregut {path_id} eliminado correctamente."}
     else:
         raise HTTPException(status_code=404, detail="Recorregut no encontrado")
+
+def read_path(path_id: str):
+    if path_id in paths_repo:
+        return paths_repo[path_id]
+    else:
+        raise HTTPException(status_code=404, detail="Recorregut no encontrado")
