@@ -25,6 +25,16 @@ def create_path(x0: float, y0: float, x1:float, y1: float):
             return e
         else:
             return HTTPException(status_code=500, detail=e)
+
+def read_all_paths():
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0)  # Same connection as create
+        
+        paths = path_model.read_all_paths(r)
+        
+        return JSONResponse(content={"paths": paths}, status_code=200)
+    except Exception as e:
+        return HTTPException(status_code=500, detail=str(e))
         
 def delete_path(path_id: str):
     try:
