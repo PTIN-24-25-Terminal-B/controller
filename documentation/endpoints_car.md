@@ -1,32 +1,40 @@
-# Gestió de Cotxes - Documentació de Funcions
+# Gestió de Cotxes - Documentació de Funcions (Redis)
 
-Aquest fitxer documenta les funcions relacionades amb la gestió de cotxes en una API REST. Les funcions realitzen operacions CRUD sobre una "base de dades" simulada amb una llista d'objectes (`cars_db`).
+Aquest fitxer documenta les funcions relacionades amb la gestió de cotxes en una API REST utilitzant Redis com a base de dades. Les funcions realitzen operacions CRUD sobre dades emmagatzemades en claus Redis amb el format `car:{id}`.
 
 ---
 
-## `get_car_by_id(car_id: int)`
+## `get_car(car_id: str)`
 
 **Propòsit**: Obtenir les dades d'un cotxe específic pel seu ID.  
 
 **Paràmetres**:
-- `car_id` (int): ID únic del cotxe.
+- `car_id` (str): ID únic del cotxe (emmagatzemat com a string).
 
 **Funcionament**:
-1. Cerca el cotxe a `cars_db` amb una expressió generator:
+1. Connexió a Redis:  
    ```python
-   car = next((car for car in cars_db if car.id == car_id), None)
+   r = redis.Redis(host='localhost', port=6379, db=0)
    ```
-2. Si no es troba (`if not car`), llança un error HTTP 404.
-3. Retorna les dades del cotxe en format diccionari.
+2. Cerca el cotxe a Redis amb la clau `car:{car_id}`:  
+   ```python
+   car_data = redis_conn.get(key)
+   ```
+3. Si no es troba (`if not car_data`), llança un error HTTP 404.
+4. Converteix les dades JSON a un objecte `Car` amb els models `Point` i `Path`.
+5. Retorna les dades del cotxe en format JSON.
 
 **Exemple de Resposta**:
 ```json
 {
-    "id": 1,
-    "carType": "SUV",
-    "seatCount": 5,
-    "mileage": 15000.5,
-    "completedRuns": 12
+    "id": "car1",
+    "batery": 85.5,
+    "position": {"x": 10, "y": 20},
+    "working": true,
+    "currentPath": {
+        "id": "path1",
+        "points": [{"x": 10, "y": 20}, {"x": 30, "y": 40}]
+    }
 }
 ```
 
@@ -34,130 +42,126 @@ Aquest fitxer documenta les funcions relacionades amb la gestió de cotxes en un
 
 ## `get_all_cars()`
 
-**Propòsit**: Llistar tots els cotxes disponibles.  
+**Propòsit**: Llistar tots els cotxes disponibles a Redis.  
 
 **Funcionament**:
-1. Comprova si `cars_db` està buida (`if not cars_db`). Si ho està, llança error 404.
-2. Retorna una llista de diccionaris amb totes les dades dels cotxes.
-
-**Exemple de Resposta**:
-```json
-[
-    {"id": 1, "carType": "SUV", "seatCount": 5, "mileage": 15000.5, "completedRuns": 12},
-    {"id": 2, "carType": "Sedan", "seatCount": 4, "mileage": 20000.0, "completedRuns": 8}
-]
-```
-
----
-
-## `update_car(car_id: int, updated_data: dict)`
-
-**Propòsit**: Actualitzar **tots** els camps modificables d'un cotxe (operació PUT).  
-
-**Validacions**:
-- Només permet camps: `carType`, `seatCount`, `mileage`, `completedRuns`.
-- Rebutja camps no permesos amb error 400.
-
-**Funcionament**:
-1. Troba l'índex del cotxe a `cars_db`:
+1. Connexió a Redis.
+2. Obté totes les claus amb el patró `car:*`:  
    ```python
-   car_index = next((i for i, car in enumerate(cars_db) if car.id == car_id), None)
+   car_keys = redis_conn.keys("car:*")
    ```
-2. Si no es troba el cotxe, llança un error HTTP 404.
-3. Actualitza el cotxe amb el mètode `modifyCar`:
-   ```python
-   car.modifyCar(
-       newType=updated_data.get("carType"),
-       newSeat=updated_data.get("seatCount"),
-       newMileage=updated_data.get("mileage"),
-       newRuns=updated_data.get("completedRuns")
-   )
-   ```
-
-**Exemple d'Ús**:
-```python
-update_car(1, {"carType": "SUV", "seatCount": 7, "mileage": 20000.0, "completedRuns": 15})
-```
-
----
-
-## `partial_update_car(car_id: int, updated_data: dict)`
-
-**Propòsit**: Actualitzar **només camps específics** d'un cotxe (operació PATCH).  
-
-**Diferències amb `update_car`**:
-- No requereix tots els camps.
-- Modifica directament els atributs de l'objecte (no usa `modifyCar`).
-
-**Funcionament**:
-1. Troba el cotxe a `cars_db`:
-   ```python
-   car = next((car for car in cars_db if car.id == car_id), None)
-   ```
-2. Si no es troba, llança un error HTTP 404.
-3. Actualitza només els camps proporcionats a `updated_data`.
-
-**Exemple d'Ús**:
-```python
-partial_update_car(1, {"mileage": 20000.0})  # Actualitza només el quilometratge
-```
-
----
-
-## `create_car(car_data: dict)`
-
-**Propòsit**: Crear un nou cotxe.  
-
-**Camps Obligatoris**:
-- `carType`: Tipus del cotxe (ex: "SUV").
-- `seatCount`: Nombre de seients.
-
-**Funcionament**:
-1. Valida que els camps obligatoris estiguin presents:
-   ```python
-   required_fields = {"carType", "seatCount"}
-   if not required_fields.issubset(car_data.keys()):
-       raise HTTPException(status_code=400, detail="Faltan campos obligatorios: carType y seatCount")
-   ```
-2. Genera un ID nou incrementant el màxim existent:
-   ```python
-   new_id = max(car.id for car in cars_db) + 1 if cars_db else 1
-   ```
-3. Crea un objecte `carModel` amb valors per defecte:
-   ```python
-   new_car = carModel(
-       id=new_id,
-       carType=car_data["carType"],
-       seatCount=car_data["seatCount"],
-       mileage=car_data.get("mileage", 0.0),
-       completedRuns=car_data.get("completedRuns", 0)
-   )
-   ```
-4. Afegeix el nou cotxe a `cars_db`.
-
-**Exemple d'Ús**:
-```python
-create_car({"carType": "SUV", "seatCount": 5})
-```
-
----
-
-## `delete_car(car_id: int)`
-
-**Propòsit**: Eliminar un cotxe de la base de dades.  
-
-**Funcionament**:
-1. Troba el cotxe a `cars_db`:
-   ```python
-   car = next((car for car in cars_db if car.id == car_id), None)
-   ```
-2. Si no es troba, llança un error HTTP 404.
-3. Elimina l'objecte de `cars_db` amb `cars_db.remove(car)`.
-4. Executa `del car` per alliberar memòria (pot disparar el destructor `__del__`).
+3. Converteix cada entrada de Redis a un objecte `Car` i retorna una llista de diccionaris.
 
 **Exemple de Resposta**:
 ```json
 {
-    "message": "Car 1 deleted"
+    "cars": [
+        {
+            "id": "car1",
+            "batery": 85.5,
+            "position": {"x": 10, "y": 20},
+            "working": true,
+            "currentPath": null
+        },
+        {
+            "id": "car2",
+            "batery": 70.0,
+            "position": {"x": 5, "y": 5},
+            "working": false,
+            "currentPath": {
+                "id": "path2",
+                "points": [{"x": 5, "y": 5}, {"x": 15, "y": 15}]
+            }
+        }
+    ]
 }
 ```
+
+---
+
+## `edit_car(car_id: str, update_data: dict)`
+
+**Propòsit**: Actualitzar camps específics d'un cotxe (operació PUT).  
+
+**Diferències amb l'exemple original**:
+- Utilitza PUT però permet actualitzacions parcials (com PATCH).
+- No requereix tots els camps.
+
+**Validacions**:
+- Només permet camps: `batery`, `position`, `working`, `currentPath`.
+- Verifica que el cotxe existeix abans d'actualitzar (error 404 si no es troba).
+
+**Funcionament**:
+1. Connexió a Redis.
+2. Parseja les dades d'entrada:
+   - `position`: Converteix el diccionari a objecte `Point`.
+   - `currentPath`: Converteix el diccionari a objecte `Path`.
+3. Actualitza el cotxe amb `modifyCar()`.
+4. Desa els canvis a Redis amb `save_car()`.
+
+**Exemple d'Ús**:
+```python
+edit_car("car1", {
+    "batery": 90.0,
+    "position": {"x": 15, "y": 25},
+    "working": false
+})
+```
+
+**Exemple de Resposta**:
+```json
+{
+    "id": "car1",
+    "batery": 90.0,
+    "position": {"x": 15, "y": 25},
+    "working": false,
+    "currentPath": null
+}
+```
+
+---
+
+## `delete_car(car_id: str)`
+
+**Propòsit**: Eliminar un cotxe de Redis.  
+
+**Funcionament**:
+1. Connexió a Redis.
+2. Intenta esborrar la clau `car:{car_id}`.
+3. Si la clau no existeix (`deleted_count == 0`), llança error 404.
+
+**Exemple de Resposta**:
+```json
+{
+    "message": "Car deleted successfully"
+}
+```
+
+---
+
+## Models Utilitzats
+
+### `Point`
+- **Camps**:
+  - `x` (float o int): Coordenada X.
+  - `y` (float o int): Coordenada Y.
+
+### `Path`
+- **Camps**:
+  - `id` (str): ID del trajecte.
+  - `path` (llista de `Point`): Llista de punts que defineixen el trajecte.
+
+---
+
+## Errors Comuns
+
+- **404 Not Found**: 
+  - Quan no es troba un cotxe amb l'ID proporcionat.
+  - Quan no hi ha cotxes registrats (`get_all_cars` retorna llista buida).
+  
+- **400 Bad Request**: 
+  - S'inclouen camps no permesos a `edit_car`.
+  
+- **500 Internal Server Error**: 
+  - Errors de connexió amb Redis.
+  - Errors inesperats durant el processament.
