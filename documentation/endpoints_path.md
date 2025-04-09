@@ -212,3 +212,119 @@ def read_all_paths(redis_conn):
     "detail": "Error reading paths from Redis: connection timeout"
 }
 ```
+
+## `delete_path(path_id: str)`
+
+**Propòsit**: Eliminar una ruta existent identificada pel seu `path_id` emmagatzemada a Redis.  
+**Flux de treball**: `request ➜ route ➜ controller ➜ model ➜ controller ➜ response`
+
+---
+
+### 1. **Request**
+
+**Mètode HTTP**: `DELETE`  
+**Endpoint**: `/paths/{path_id}`  
+**Paràmetres**:  
+- `path_id`: Identificador únic de la ruta a eliminar (`string`)
+
+---
+
+### 2. **Route Layer**
+
+```python
+@router.delete("/{path_id}")
+async def delete_path_endpoint(path_id: str):
+    return path_controller.delete_path(path_id)
+```
+
+- Rep el paràmetre `path_id` de la sol·licitud.
+- Invoca la funció `delete_path` del controlador passant el `path_id`.
+
+---
+
+### 3. **Controller Layer**
+
+```python
+def delete_path(path_id: str):
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        deleted_count = path_model.delete_path(path_id, r)
+        
+        if deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Path not found")
+            
+        return JSONResponse(
+            content={"message": "Path deleted successfully"},
+            status_code=200
+        )
+    except HTTPException as he:
+        return he
+    except Exception as e:
+        return HTTPException(
+            status_code=500,
+            detail=f"Error deleting path: {str(e)}"
+        )
+```
+
+**Funcionament**:
+
+1. **Connexió a Redis**:  
+   - Estableix una connexió amb la base de dades Redis.
+
+2. **Eliminació de la ruta**:  
+   - Crida a `path_model.delete_path(path_id, r)` per eliminar la clau `path:{path_id}`.  
+   - Si `delete` retorna `0`, significa que la ruta no existia, i es llança un error `HTTP 404`.
+
+3. **Resposta**:  
+   - Si l'eliminació és exitosa, retorna un missatge de confirmació (`HTTP 200`).  
+   - Captura errors específics (`HTTP 404` i `HTTP 500`) i retorna la resposta adequada.
+
+---
+
+### 4. **Model Layer**
+
+```python
+def delete_path(path_id: str, redis_conn):
+    key = f"path:{path_id}"
+    return redis_conn.delete(key)  # Retorna 1 si s'elimina, 0 si no existeix
+```
+
+**Funcionament**:
+
+1. **Construcció de la clau**:  
+   - La clau a eliminar es construeix amb el format `path:{path_id}`.
+
+2. **Eliminació de la ruta**:  
+   - Executa la funció `.delete()` de Redis per eliminar la clau.
+   - Retorna `1` si s'ha eliminat la ruta o `0` si la ruta no existia.
+
+**Error Handling**:  
+- Si hi ha algun error en la comunicació amb Redis, es captura i es retorna un error intern (`HTTP 500`).
+
+---
+
+### 5. **Respostes Exemple**
+
+**Èxit** (`HTTP 200`):
+
+```json
+{
+    "message": "Path deleted successfully"
+}
+```
+
+**Error de Ruta No Trobada** (`HTTP 404`):
+
+```json
+{
+    "detail": "Path not found"
+}
+```
+
+**Error Intern** (`HTTP 500`):
+
+```json
+{
+    "detail": "Error deleting path: <error message>"
+}
+```
