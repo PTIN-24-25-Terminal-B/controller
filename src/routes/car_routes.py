@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from fastapi import Body
-from ..controllers import car_controller
+from controllers import car_controller
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
