@@ -18,13 +18,11 @@ def delete_car(car_id: str):
             content={"message": "Car deleted successfully"},
             status_code=200
         )
-    except HTTPException as he:
-        return he
-    except Exception as e:
-        return HTTPException(
-            status_code=500,
-            detail=f"Error deleting car: {str(e)}"
-        )
+    except (ValueError, TypeError, HTTPException) as e:
+        if isinstance(e, HTTPException):
+            return e
+        else:
+            return HTTPException(status_code=500, detail=e)
     
 def get_car(car_id: str):
     try:
@@ -48,10 +46,11 @@ def get_car(car_id: str):
         
         return JSONResponse(content=car_data, status_code=200)
     
-    except HTTPException as he:
-        return he
-    except Exception as e:
-        return HTTPException(status_code=500, detail=f"Error retrieving car: {str(e)}")
+    except (ValueError, TypeError, HTTPException) as e:
+        if isinstance(e, HTTPException):
+            return e
+        else:
+            return HTTPException(status_code=500, detail=e)
   
 def edit_car(car_id: str, update_data: dict = Body(...)):
     try:
@@ -101,12 +100,11 @@ def edit_car(car_id: str, update_data: dict = Body(...)):
         
         return JSONResponse(content=updated_car, status_code=200)
     
-    except KeyError as e:
-        return HTTPException(status_code=400, detail=f"Invalid field: {str(e)}")
-    except HTTPException as he:
-        return he
-    except Exception as e:
-        return HTTPException(status_code=500, detail=f"Error updating car: {str(e)}")
+    except (KeyError, ValueError, TypeError, HTTPException) as e:
+        if isinstance(e, HTTPException):
+            return e
+        else:
+            return HTTPException(status_code=500, detail=e)
 
 def get_all_cars():
     try:
@@ -130,8 +128,8 @@ def get_all_cars():
         
         return JSONResponse(content={"cars": cars_data}, status_code=200)
     
-    except Exception as e:
-        return HTTPException(
-            status_code=500,
-            detail=f"Error retrieving cars: {str(e)}"
-        )
+    except (ValueError, TypeError, HTTPException) as e:
+        if isinstance(e, HTTPException):
+            return e
+        else:
+            return HTTPException(status_code=500, detail=e)
