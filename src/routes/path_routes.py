@@ -10,8 +10,6 @@ async def get_all_paths():
 
 @router.post("/")
 def create_path(points: list[Point]):
-    for p in points:
-        print(p.x, p.y)
     return path_controller.create_path(points)
 
 @router.put("/")

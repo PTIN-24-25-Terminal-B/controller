@@ -1,6 +1,7 @@
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException
 from models.path_model import Point, Path
+import requests
 import models.path_model as path_model
 import uuid
 import redis
@@ -23,6 +24,18 @@ def create_path(point_list: list[Point]):
         if len(point_list) < 2:
             raise HTTPException(status_code=400, detail="At least two points are required")
 
+        print({"start": point_list[0], "goal": point_list[1]})
+
+        res = requests.post("http://api_pathfinding:5000/set-checkpoints", json={"start": point_list[0].model_dump(), "goal": point_list[1].model_dump()})
+
+        print (res)
+
+        if(res.ok):
+            data = res.json()
+            print(data)
+        else:
+            print(res.text)
+
         new_path = Path(
             id=str(uuid.uuid4()),
             path=point_list
@@ -36,7 +49,7 @@ def create_path(point_list: list[Point]):
 
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))
-    
+
 def update_path(path_obj: Path):
     try:
         r = redis.Redis(host='localhost', port=6379, db=0)

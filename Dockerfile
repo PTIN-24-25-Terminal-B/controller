@@ -20,4 +20,4 @@ COPY ./src ./src
 EXPOSE 8080
 
 # Ensure the entrypoint script runs with Python
-CMD ["python", "./src/app.py"]
+CMD ["python3", "./src/app.py"]

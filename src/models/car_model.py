@@ -1,28 +1,31 @@
-import json
+from pydantic import BaseModel, Field
 from models.path_model import Point, Path
+import json
+import redis
 
-class Car:
-    # variable types: carModel(integer, string, string, float, integer)
-    def __init__(self, id: str, batery: float, position: Point, working: bool, currentPath: Path=None):
-        self.id = id
-        self.batery = batery
-        self.position = position
-        self.working = working
-        self.currentPath = currentPath
-    
-    # when reading the class as a string, returns de data in the model in json format
+from pydantic import BaseModel
+from typing import Optional
+import json
+
+# Assuming Point and Path are already defined as Pydantic models
+
+class Car(BaseModel):
+    id: str
+    batery: float
+    position: Point
+    working: bool = False
+    currentPath: Optional[Path] = None
+
     def __str__(self):
-        return json.dumps({
-            "id": self.id,
-            "batery": self.batery,
-            "position": self.position.to_dict(),
-            "working": self.working,
-            "currentPath": self.currentPath.to_dict() if self.currentPath else None
-        }, indent=4)
-    
-    # allows to modify any of the stored data in the car model. Warning, changing it's id might create some errors
-    # like the target car not being found, or modifying the values of another car
-    def modifyCar(self, newBatery:float = None, newPosition: Point = None, working: bool = None, currentPath: Path = None):
+        return json.dumps(self.model_dump(mode="json"), indent=4)
+
+    def modifyCar(
+        self,
+        newBatery: float = None,
+        newPosition: Point = None,
+        working: bool = None,
+        currentPath: Path = None
+    ):
         if newBatery is not None:
             self.batery = newBatery
         if newPosition is not None:
@@ -30,89 +33,37 @@ class Car:
         if working is not None:
             self.working = working
         if currentPath is not None:
-            self.mileage = currentPath
+            self.currentPath = currentPath
         return self
-    
-    # method to delete the car model
-    def __del__(self):
-        return
-    
-def delete_car(car_id: str, redis_conn):
-    key = f"car:{car_id}"
-    return redis_conn.delete(key)  # Retorna 1 si s'esborra, 0 si no existeix
 
-def get_car(car_id: str, redis_conn):
-    key = f"car:{car_id}"
-    car_data = redis_conn.get(key)
-    
-    if not car_data:
-        return None
-    
-    car_dict = json.loads(car_data)
-    
-    # Convertir datos crudos a objetos del modelo
-    position = Point(x=car_dict["position"]["x"], y=car_dict["position"]["y"])
-    
-    current_path = None
-    if car_dict.get("currentPath"):
-        path_points = [Point(x=p["x"], y=p["y"]) for p in car_dict["currentPath"]["points"]]
-        current_path = Path(pathId=car_dict["currentPath"]["id"], path=path_points)
-    
-    return Car(
-        id=car_dict["id"],
-        batery=car_dict["batery"],
-        position=position,
-        working=car_dict["working"],
-        currentPath=current_path
-    )
+    @staticmethod
+    def get_car(car_id: str, redis_conn):
+        data = redis_conn.get(f"car:{car_id}")
+        return Car(**json.loads(data)) if data else None
 
-def save_car(car: Car, redis_conn):
-    key = f"car:{car.id}"
-    car_data = json.dumps({
-        "id": car.id,
-        "batery": car.batery,
-        "position": {"x": car.position.x, "y": car.position.y},
-        "working": car.working,
-        "currentPath": {
-            "id": car.currentPath.id,
-            "points": [{"x": p.x, "y": p.y} for p in car.currentPath.path]
-        } if car.currentPath else None
-    }, indent=4)
-    redis_conn.set(key, car_data)
-    return car
+    @staticmethod
+    def read_all_cars(redis_conn):
+        keys = redis_conn.keys("car:*")
+        return [json.loads(redis_conn.get(k)) for k in keys if redis_conn.get(k)]
 
-def get_all_cars(redis_conn):
-    car_keys = redis_conn.keys("car:*")
-    cars = []
-    
-    for key in car_keys:
-        car_data = redis_conn.get(key)
-        if car_data:
-            car_dict = json.loads(car_data)
-            
-            # Convertir datos a objetos del modelo
-            position = Point(
-                x=car_dict["position"]["x"],
-                y=car_dict["position"]["y"]
-            )
-            
-            current_path = None
-            if car_dict.get("currentPath"):
-                path_points = [
-                    Point(x=p["x"], y=p["y"]) 
-                    for p in car_dict["currentPath"]["points"]
-                ]
-                current_path = Path(
-                    pathId=car_dict["currentPath"]["id"],
-                    path=path_points
-                )
-                
-            cars.append(Car(
-                id=car_dict["id"],
-                batery=car_dict["batery"],
-                position=position,
-                working=car_dict["working"],
-                currentPath=current_path
-            ))
-    
-    return cars
+    @staticmethod
+    def create_car(car: "Car", redis_conn):
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=4)
+        if redis_conn.set(key, value, nx=True):
+            return car
+        else:
+            raise ValueError("Car with given id already exists")
+
+    @staticmethod
+    def update_car(car: "Car", redis_conn):
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=4)
+        if redis_conn.set(key, value, xx=True):
+            return car
+        else:
+            raise ValueError("Car with given id does not exist")
+
+    @staticmethod
+    def delete_car(car_id: str, redis_conn):
+        return redis_conn.delete(f"car:{car_id}")
