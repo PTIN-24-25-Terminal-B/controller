@@ -44,7 +44,29 @@ class Car(BaseModel):
     @staticmethod
     def read_all_cars(redis_conn):
         keys = redis_conn.keys("car:*")
-        return [json.loads(redis_conn.get(k)) for k in keys if redis_conn.get(k)]
+        cars = []
+
+        for key in keys:
+            raw = redis_conn.get(key)
+            if raw:
+                data = json.loads(raw)
+
+                # Convert nested fields into actual model instances
+                if isinstance(data.get("position"), dict):
+                    data["position"] = Point.model_validate(data["position"])
+                elif isinstance(data.get("position"), str):
+                    data["position"] = Point.model_validate_json(data["position"])
+
+                if data.get("currentPath"):
+                    if isinstance(data["currentPath"], dict):
+                        data["currentPath"] = Path.model_validate(data["currentPath"])
+                    elif isinstance(data["currentPath"], str):
+                        data["currentPath"] = Path.model_validate_json(data["currentPath"])
+
+                car = Car(**data)
+                cars.append(car)
+
+        return cars
 
     @staticmethod
     def create_car(car: "Car", redis_conn):

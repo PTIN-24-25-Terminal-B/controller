@@ -58,18 +58,19 @@ class Path(BaseModel):
 # Functions for Redis interaction
 # =============================
 
-def read_all_paths(redis_conn: redis.connection):
+def read_all_paths(redis_conn: redis.connection) -> list[Path]:
     try:
         keys = redis_conn.keys('path:*')
-        
-        paths = []
+        paths: list[Path] = []
+
         for key in keys:
             path_data = redis_conn.get(key)
             if path_data:
-                path_dict = json.loads(path_data)
-                paths.append(path_dict)
-        
+                path = Path.model_validate_json(path_data)
+                paths.append(path)
+
         return paths
+
     except Exception as e:
         raise ValueError(f"Error reading paths from database: {str(e)}")
 

@@ -10,9 +10,9 @@ def read_all_paths():
     try:
         r = redis.Redis(host='localhost', port=6379, db=0)  # Same connection as create
         
-        paths = path_model.read_all_paths(r)
-        
-        return JSONResponse(content={"paths": paths}, status_code=200)
+        paths: list[Path] = path_model.read_all_paths(r)
+        return paths
+
     except (ValueError, TypeError, HTTPException) as e:
         if isinstance(e, HTTPException):
             return e
@@ -26,26 +26,27 @@ def create_path(point_list: list[Point]):
 
         print({"start": point_list[0], "goal": point_list[1]})
 
-        res = requests.post("http://api_pathfinding:5000/set-checkpoints", json={"start": point_list[0].model_dump(), "goal": point_list[1].model_dump()})
-
-        print (res)
-
-        if(res.ok):
-            data = res.json()
-            print(data)
-        else:
-            print(res.text)
-
+#        res = requests.post("http://api_pathfinding:5000/set-checkpoints", json={"start": point_list[0].model_dump(), "goal": point_list[1].model_dump()})
+#
+ #       print ("this is the new path: ", res)
+#
+ #       if(res.ok):
+  #          data = res.json()
+   #         print(data)
+    #    else:
+     #       print(res.text)
+        print(point_list)
         new_path = Path(
             id=str(uuid.uuid4()),
             path=point_list
         )
 
-        r = redis.Redis(host='localhost', port=6379, db=0)
-        # Call your model function
-        path_model.create_path(new_path, r)
 
-        return JSONResponse(content={"message": "Path created successfully"}, status_code=200)
+        ##Add path to DB, maybe temporary
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        path_model.create_path(new_path, r)
+        print(new_path)
+        return JSONResponse(new_path.model_dump_json(), status_code=200)
 
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))

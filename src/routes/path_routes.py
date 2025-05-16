@@ -4,9 +4,10 @@ from models.path_model import Point, Path
 
 router = APIRouter(prefix="/paths", tags=["Paths"])
 
-@router.get("/")
+@router.get("/", response_model=list[Path])
 async def get_all_paths():
-    return path_controller.read_all_paths()
+    paths = path_controller.read_all_paths()
+    return paths  # FastAPI will serialize it to JSON automatically
 
 @router.post("/")
 def create_path(points: list[Point]):

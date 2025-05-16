@@ -16,8 +16,8 @@ def get_car(car_id: str):
 
 def get_all_cars():
     r = get_redis_connection()
-    cars = [Car(**car_dict) for car_dict in Car.read_all_cars(r)]
-    return cars
+    return Car.read_all_cars(r)
+
 
 def create_car(car: Car):
     r = get_redis_connection()
