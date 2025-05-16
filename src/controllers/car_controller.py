@@ -18,7 +18,6 @@ def get_all_cars():
     r = get_redis_connection()
     return Car.read_all_cars(r)
 
-
 def create_car(car: Car):
     r = get_redis_connection()
     try:

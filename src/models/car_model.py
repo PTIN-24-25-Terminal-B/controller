@@ -1,33 +1,32 @@
 from pydantic import BaseModel, Field
-from models.path_model import Point, Path
+from models.path_model import Point
 import json
 import redis
 
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
 import json
-
-# Assuming Point and Path are already defined as Pydantic models
+import redis
+from typing import List, Tuple
 
 class Car(BaseModel):
     id: str
-    batery: float
-    position: Point
+    battery: float
+    position: Tuple[int, int]  # Simple coordinate tuple instead of Point
     working: bool = False
-    currentPath: Optional[Path] = None
+    currentPath: List[Tuple[int, int]] = Field(default_factory=list)  # List of coordinate tuples
 
     def __str__(self):
         return json.dumps(self.model_dump(mode="json"), indent=4)
 
     def modifyCar(
         self,
-        newBatery: float = None,
-        newPosition: Point = None,
+        newBattery: float = None,
+        newPosition: Tuple[int, int] = None,
         working: bool = None,
-        currentPath: Path = None
+        currentPath: List[Tuple[int, int]] = None
     ):
-        if newBatery is not None:
-            self.batery = newBatery
+        if newBattery is not None:
+            self.battery = newBattery
         if newPosition is not None:
             self.position = newPosition
         if working is not None:
@@ -39,33 +38,23 @@ class Car(BaseModel):
     @staticmethod
     def get_car(car_id: str, redis_conn):
         data = redis_conn.get(f"car:{car_id}")
-        return Car(**json.loads(data)) if data else None
+        if data:
+            car_data = json.loads(data)
+            # No need to convert position or currentPath as they're already in the right format
+            return Car(**car_data)
+        return None
 
     @staticmethod
     def read_all_cars(redis_conn):
         keys = redis_conn.keys("car:*")
         cars = []
-
         for key in keys:
             raw = redis_conn.get(key)
             if raw:
                 data = json.loads(raw)
-
-                # Convert nested fields into actual model instances
-                if isinstance(data.get("position"), dict):
-                    data["position"] = Point.model_validate(data["position"])
-                elif isinstance(data.get("position"), str):
-                    data["position"] = Point.model_validate_json(data["position"])
-
-                if data.get("currentPath"):
-                    if isinstance(data["currentPath"], dict):
-                        data["currentPath"] = Path.model_validate(data["currentPath"])
-                    elif isinstance(data["currentPath"], str):
-                        data["currentPath"] = Path.model_validate_json(data["currentPath"])
-
+                # No need to convert position or currentPath
                 car = Car(**data)
                 cars.append(car)
-
         return cars
 
     @staticmethod
