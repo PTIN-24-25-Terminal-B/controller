@@ -25,3 +25,5 @@ print(Car.read_all_cars(r))
 #print (car1)
 
 #{"action": "request_car", "params": {"origin": [10, 10], "destination": [10, 10]}}
+
+#wscat -c ws://localhost:8000/ws/web/123

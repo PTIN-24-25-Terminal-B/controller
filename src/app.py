@@ -4,10 +4,10 @@ from routes.car_routes import router as car_router
 from routes.path_routes import router as path_router
 from WSmanager import ConnectionManager
 from fastapi.middleware.cors import CORSMiddleware
-
+import asyncio
 # Acciones por tipo
 from handlers.car import car_actions
-from handlers.web import web_actions
+from handlers.web2 import web_actions
 from handlers.ia import ia_actions
 
 app = FastAPI()
@@ -66,7 +66,12 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, client_id: 
     print(f"{client_type.upper()} client [{client_id}] connected")
 
     try:
-        await handle_client(client_id, client_type, websocket)
+        if client_type == "web":
+            print("connected_cars: ", manager["car"])
+            await handle_client(client_id, client_type, websocket)
+        else:
+            while True:
+                await asyncio.sleep(5)
     except WebSocketDisconnect:
         manager.remove(client_type, client_id)
         print(f"{client_type.upper()} client [{client_id}] disconnected")
