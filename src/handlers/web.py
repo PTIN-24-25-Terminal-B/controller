@@ -2,7 +2,6 @@ import json
 from fastapi import WebSocket
 from typing import List, Dict
 import websockets
-from WSmanager import ConnectionManager
 
 
 #Provisional hasta que este connexion a BD
@@ -53,8 +52,15 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
             car_id = selected_car["id"]
 
             car_ws = ConnectionManager.get("car", car_id)
-            if not car_ws:
-                await websocket.send_text(f"Selected car [{car_id}] is not connected")
+            if car_ws:
+                await websocket.send_josn({
+                    "action": "car_selected",
+                    "params": {
+                        "carId": car_id
+                    }
+                })  
+            else:
+                await websocket.send_text(f"Error connecting with car, please try again")
                 return
 
             # b. Ruta usuario → destino
@@ -73,8 +79,8 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
 
     # ➤ Enviar la primera ruta al coche
     await car_ws.send_json({
-        "action": "drive_to_user",
-        "data": {
+        "action": "start_trip",
+        "params": {
             "path": path_to_user
         }
     })
@@ -82,8 +88,13 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
     # ➤ Esperar confirmación del coche (llegada al usuario)
     while True:
         message = await car_ws.receive_json()
-        if message.get("action") == "arrived_to_user":
+        if message.get("action") == "trip_completed":
             break
+        if message.get("action") == "trip_cancelled":
+            await websocket.send_json({
+                "action": "trip_cancelled"
+            })
+            return
         if message.get("action") == "recalc_path":
             #call ia to recalc path
             print()
@@ -91,7 +102,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
     # ➤ Avisar al cliente web que el coche ha llegado
     await websocket.send_json({
         "action": "car_arrived",
-        "data": {
+        "params": {
             "car_id": car_id
         }
     })
@@ -104,8 +115,8 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
 
     # ➤ Enviar ruta al coche para llevar al usuario al destino
     await car_ws.send_json({
-        "action": "drive_to_destination",
-        "data": {
+        "action": "start_trip",
+        "params": {
             "path": route_to_destination.get("path")
         }
     })
@@ -119,10 +130,14 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
             #call ia to recalc path
             print()
 
+    await car_ws.send_json({
+        "action": "trip_finished",
+    })
+
     # ➤ Avisar al cliente que el viaje terminó
     await websocket.send_json({
         "action": "trip_finished",
-        "data": {
+        "params": {
             "car_id": car_id
         }
     })

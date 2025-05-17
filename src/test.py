@@ -7,6 +7,16 @@ def get_redis_connection():
 r = get_redis_connection()
 
 
-print("\n\n")
+car1 = Car(
+id="car600",
+battery=85.5,
+position=[1, 2], # Simple coordinate pair instead of Point object
+working=True,
+currentPath=[[1, 3], [2, 3], [3, 3]] # List of coordinate pairs
+)
 
-print (Car.read_all_cars(r)[0].id)
+#Car.create_car(car1, r)
+
+print(Car.read_all_cars(r))
+
+#print (car1)
