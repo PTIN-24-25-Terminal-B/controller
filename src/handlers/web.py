@@ -39,16 +39,10 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
     try:
         async with websockets.connect(ROUTING_WS_URL) as routing_ws:
             # a. Rutas coches → usuario
-            await routing_ws.send(json.dumps({
-                "action": "calculate_routes",
-                "params": {
-                    "start": start_coords,
-                    "goal": origin
-                }
-            }))
+            await routing_ws.send(json.dumps({"start": start_coords, "goal": origin}))
             result_to_user = json.loads(await routing_ws.recv())
 
-            car_index = result_to_user.get("car_index")
+            car_index = result_to_user.get("car")
             path_to_user = result_to_user.get("path")
 
             if car_index is None or path_to_user is None:
@@ -90,6 +84,9 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
         message = await car_ws.receive_json()
         if message.get("action") == "arrived_to_user":
             break
+        if message.get("action") == "recalc_path":
+            #call ia to recalc path
+            print()
 
     # ➤ Avisar al cliente web que el coche ha llegado
     await websocket.send_json({
@@ -118,6 +115,9 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
         message = await car_ws.receive_json()
         if message.get("action") == "trip_completed":
             break
+        if message.get("action") == "recalc_path":
+            #call ia to recalc path
+            print()
 
     # ➤ Avisar al cliente que el viaje terminó
     await websocket.send_json({
