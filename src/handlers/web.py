@@ -2,6 +2,7 @@ import json
 from fastapi import WebSocket
 from typing import List, Dict
 import websockets
+from WSmanager import ConnectionManager
 
 
 #Provisional hasta que este connexion a BD
@@ -25,10 +26,18 @@ def is_valid_coord(coord: List) -> bool:
     )
 
 
-async def request_car(client_id: str, websocket: WebSocket, params: Dict):
+async def request_car(client_id: str, websocket: WebSocket, params: Dict, manager: ConnectionManager):
+    print(1)
     origin = params.get("origin")
     destination = params.get("destination")
 
+    print(manager["web"])
+
+    await websocket.send_text(str(manager["web"]))
+
+    return str(manager["web"])
+
+    print(0)
     if not (is_valid_coord(origin) and is_valid_coord(destination)):
         await websocket.send_text("Invalid or missing origin/destination format")
         return
@@ -51,7 +60,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict):
             selected_car = AVAILABLE_CARS[car_index]
             car_id = selected_car["id"]
 
-            car_ws = ConnectionManager.get("car", car_id)
+            car_ws = manager.get("car", car_id)
             if car_ws:
                 await websocket.send_josn({
                     "action": "car_selected",

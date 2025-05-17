@@ -1,4 +1,5 @@
 from models.car_model import Car
+from WSmanager import ConnectionManager
 import redis
 
 def get_redis_connection():
@@ -15,8 +16,12 @@ working=True,
 currentPath=[[1, 3], [2, 3], [3, 3]] # List of coordinate pairs
 )
 
+
+print(len(ConnectionManager["web"]))
 #Car.create_car(car1, r)
 
 print(Car.read_all_cars(r))
 
 #print (car1)
+
+#{"action": "request_car", "params": {"origin": [10, 10], "destination": [10, 10]}}

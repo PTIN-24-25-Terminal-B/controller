@@ -12,6 +12,9 @@ class ConnectionManager:
             "ia": {}
         }
 
+    def __getitem__(self, client_type: str) -> Dict[str, WebSocket]:
+        return self.active_connections[client_type]
+
     def add(self, client_type: str, client_id: str, websocket: WebSocket):
         self.active_connections[client_type][client_id] = websocket
 
