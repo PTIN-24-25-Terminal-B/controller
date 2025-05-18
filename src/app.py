@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI
 import uvicorn
 from routes.car_routes import router as car_router
 from routes.path_routes import router as path_router

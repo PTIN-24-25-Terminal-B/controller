@@ -191,7 +191,6 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     await notify_trip_finished(car_ws, websocket, car_id)
 
 
-# Mapeo de acciones disponibles para cliente web
 web_actions = {
     "request_car": request_car
 }
