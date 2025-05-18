@@ -61,11 +61,11 @@ async def wait_for_car_arrival(car_ws: WebSocket, websocket: WebSocket) -> bool:
             print("Recalculating path...")
     # print("Waiting for car arrival...")
 
-async def notify_client_car_arrived(websocket: WebSocket, car_id: str):
+async def notify_client_car_arrived(websocket: WebSocket, car_id: str, path_to_destination: List[List[int]]):
     # print(f"Notifying client car {car_id} has arrived")
     await websocket.send_json({
         "action": "car_arrived",
-        "params": {"car_id": car_id}
+        "params": {"car_id": car_id, "path": path_to_destination}
     })
 
 
@@ -176,7 +176,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
 
     await websocket.send_json({
         "action": "car_selected",
-        "params": {"carId": car_id}
+        "params": {"carId": car_id, "path": path_to_user}
     })
     # print(f"Car {car_id} selected and notified to client")
 
@@ -184,7 +184,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
 
     await wait_for_car_arrival(car_ws, websocket)
 
-    await notify_client_car_arrived(websocket, car_id)
+    await notify_client_car_arrived(websocket, car_id, path_to_destination)
     await wait_for_client_to_start(websocket)
     await send_trip_to_destination(car_ws, path_to_destination)
     await wait_for_trip_completion(car_ws)
