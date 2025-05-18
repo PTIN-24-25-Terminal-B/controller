@@ -9,7 +9,7 @@ import redis
 from typing import List, Tuple
 
 def get_redis_connection():
-    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    return redis.Redis(host='redis-db', port=6379, db=0, decode_responses=True)
 
 class Car(BaseModel):
     id: str

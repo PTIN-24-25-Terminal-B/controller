@@ -11,7 +11,7 @@ ROUTING_WS_URL = "ws://192.168.20.7:5000/path"
 # Temporary # connection for the database while con pool is missing
 
 def get_redis_connection():
-    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    return redis.Redis(host='redis-db', port=6379, db=0, decode_responses=True)
 
 
 def is_valid_coord(coord: list) -> bool:
@@ -109,7 +109,7 @@ async def notify_trip_finished(car_ws: WebSocket, websocket: WebSocket, car_id: 
 async def get_routing_info(origin, destination, websocket: WebSocket):
     try:
         free_cars: list[Car] = available_cars()
-        start_coords: list[Tuple[int, int]] = []
+        start_coords: list[Tuple[float, float]] = []
         for car in free_cars:
             start_coords.append(car.position)       
 
@@ -129,21 +129,16 @@ async def get_routing_info(origin, destination, websocket: WebSocket):
 
             selected_car = free_cars[car_index]
             car_id = selected_car.id
-
+            origin_coords: list[Tuple[float, float]] = []
+            origin_coords.append(origin)
             # b. Ruta: usuari → destí
-            await routing_ws.send(json.dumps({
-                "action": "calculate_routes",
-                "params": {
-                    "start": origin,
-                    "goal": destination
-                }
-            }))
+            await routing_ws.send(json.dumps({"start": origin_coords, "goal": destination}))
             path_to_destination_resp = json.loads(await routing_ws.recv())
             # print(f"Routing response to destination: {path_to_destination_resp}")
             path_to_destination = path_to_destination_resp.get("path")
 
             if path_to_destination is None:
-                await websocket.send_text("Invalid response from routing service (step 2)")
+                await websocket.send_text(f"Invalid response from routing service (step 2): {path_to_destination_resp}")
                 return None, None, None
 
             return car_id, path_to_user, path_to_destination
