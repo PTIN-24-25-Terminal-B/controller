@@ -12,14 +12,22 @@ async def get_car(car_id: str):
 async def get_all_cars():
     return car_controller.get_all_cars()
 
-@router.post("/")
-async def create_car(car: Car):
-    return car_controller.create_car(car)
+#@router.post("/")
+#async def create_car(car: Car):
+#    return car_controller.create_car(car)
 
 @router.put("/")
 async def update_car(car: Car):
     return car_controller.update_car(car)
 
+#@router.delete("/{car_id}")
+#async def delete_car(car_id: str):
+#    return car_controller.delete_car(car_id)
+
+@router.post("/")
+async def car_connection(car: Car):
+    return Car.car_connection(car)
+
 @router.delete("/{car_id}")
-async def delete_car(car_id: str):
-    return car_controller.delete_car(car_id)
+async def car_disconnect(car_id: str):
+    return Car.delete_car(car_id)

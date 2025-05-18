@@ -8,6 +8,9 @@ import json
 import redis
 from typing import List, Tuple
 
+def get_redis_connection():
+    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
 class Car(BaseModel):
     id: str
     battery: float
@@ -76,5 +79,14 @@ class Car(BaseModel):
             raise ValueError("Car with given id does not exist")
 
     @staticmethod
-    def delete_car(car_id: str, redis_conn):
+    def delete_car(car_id: str):
+        redis_conn = get_redis_connection()
         return redis_conn.delete(f"car:{car_id}")
+    
+    @staticmethod
+    def car_connection(car: "Car"):
+        redis_conn = get_redis_connection()
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=4)
+        redis_conn.set(key, value)
+        return car

@@ -32,6 +32,7 @@ async def handle_client(client_id: str, client_type: str, websocket: WebSocket):
             params = message.get("params", {})
 
             if action in actions:
+                print(params)
                 await actions[action](client_id, websocket, params, manager)
             else:
                 await websocket.send_text(f"Unknown action: {action}")
