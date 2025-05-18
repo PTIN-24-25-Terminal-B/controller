@@ -2,14 +2,15 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from handlers.car import car_actions
 from handlers.web2 import web_actions
 from handlers.ia import ia_actions
-from WSmanager import ConnectionManager
+from socket_manager import get_manager
 
 
 import asyncio
 
 router = APIRouter(tags=["WebSocket"])
 
-manager = ConnectionManager()
+# Get the shared manager instance
+manager = get_manager()
 
 async def handle_client(client_id: str, client_type: str, websocket: WebSocket):
     action_map = {

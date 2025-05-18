@@ -183,7 +183,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     await send_trip_to_destination(car_ws, path_to_destination)
     await wait_for_trip_completion(car_ws)
     await notify_trip_finished(car_ws, websocket, car_id)
-    await websocket.close()
+    return
 
 
 web_actions = {
