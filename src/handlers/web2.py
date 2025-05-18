@@ -26,7 +26,7 @@ def is_valid_coord(coord: List) -> bool:
 
 
 async def validate_params(origin, destination, websocket: WebSocket) -> bool:
-    print(f"Validating params: origin={origin}, destination={destination}")
+    # print(f"Validating params: origin={origin}, destination={destination}")
     if not (is_valid_coord(origin) and is_valid_coord(destination)):
         await websocket.send_text("Invalid or missing origin/destination format")
         return False
@@ -34,17 +34,17 @@ async def validate_params(origin, destination, websocket: WebSocket) -> bool:
 
 
 def select_car() -> Dict:
-    print("Selecting first available car (default logic)")
+    # ("Selecting first available car (default logic)")
     return AVAILABLE_CARS[0]
 
 
 async def notify_car_arrival(car_ws: WebSocket, path_to_user: List[List[int]]):
-    print(f"Sending car arrival path: {path_to_user}")
+    # print(f"Sending car arrival path: {path_to_user}")
     await car_ws.send_json({
         "action": "start_trip",
         "params": {"path": path_to_user}
     })
-    print(f"Sent")
+    # print(f"Sent")
 
 
 async def wait_for_car_arrival(car_ws: WebSocket, websocket: WebSocket) -> bool:
@@ -59,10 +59,10 @@ async def wait_for_car_arrival(car_ws: WebSocket, websocket: WebSocket) -> bool:
         elif action == "recalc_path":
             # print("Recalculating path (car side)...")
             print("Recalculating path...")
-    print("Waiting for car arrival...")
+    # print("Waiting for car arrival...")
 
 async def notify_client_car_arrived(websocket: WebSocket, car_id: str):
-    print(f"Notifying client car {car_id} has arrived")
+    # print(f"Notifying client car {car_id} has arrived")
     await websocket.send_json({
         "action": "car_arrived",
         "params": {"car_id": car_id}
@@ -155,7 +155,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     origin = params.get("origin")
     destination = params.get("destination")
 
-    print(f"Client {client_id} requesting car from {origin} to {destination}")
+    # print(f"Client {client_id} requesting car from {origin} to {destination}")
     if not await validate_params(origin, destination, websocket):
         return
 
@@ -167,7 +167,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     car_ws = manager["car"]["1234"]
     path_to_user = [[10,10],[10,10],[10,10]]
     path_to_destination = [[12, 12],[12, 12],[12, 12]]
-    selected_car = AVAILABLE_CARS[0]
+    selected_car = select_car()
     car_id = selected_car["id"]
 
     if not car_ws:
@@ -178,12 +178,11 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
         "action": "car_selected",
         "params": {"carId": car_id}
     })
-    print(f"Car {car_id} selected and notified to client")
+    # print(f"Car {car_id} selected and notified to client")
 
     await notify_car_arrival(car_ws, path_to_user)
 
-    if not await wait_for_car_arrival(car_ws, websocket):
-        return
+    await wait_for_car_arrival(car_ws, websocket)
 
     await notify_client_car_arrived(websocket, car_id)
     await wait_for_client_to_start(websocket)
