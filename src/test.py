@@ -16,11 +16,8 @@ working=True,
 currentPath=[[1, 3], [2, 3], [3, 3]] # List of coordinate pairs
 )
 
-
-print(len(ConnectionManager["web"]))
-#Car.create_car(car1, r)
-
-print(Car.read_all_cars(r))
+print(car1.id)
+print(Car.read_all_cars(r)[0].id)
 
 #print (car1)
 

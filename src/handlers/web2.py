@@ -1,23 +1,20 @@
 import json
 import websockets
 from fastapi import WebSocket
-from typing import List, Dict
+from typing import Dict, Tuple
 from WSmanager import ConnectionManager
-
-# Temporal hasta conexión con base de datos
-AVAILABLE_CARS = [
-    {"id": "1234", "position": [15, 66]},
-    {"id": "car2", "position": [12, 91]},
-    {"id": "car3", "position": [48, 66]},
-    {"id": "car4", "position": [55, 93]},
-    {"id": "car5", "position": [10, 66]},
-    {"id": "car6", "position": [49, 87]},
-]
+from models.car_model import Car
+import redis
 
 ROUTING_WS_URL = "ws://192.168.20.7:5000/path"
 
+# Temporary # connection for the database while con pool is missing
 
-def is_valid_coord(coord: List) -> bool:
+def get_redis_connection():
+    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+
+def is_valid_coord(coord: list) -> bool:
     return (
         isinstance(coord, list)
         and len(coord) == 2
@@ -32,13 +29,16 @@ async def validate_params(origin, destination, websocket: WebSocket) -> bool:
         return False
     return True
 
+def available_cars() -> list[Car]:
+    r = get_redis_connection()
+    allCars: list[Car] = Car.read_all_cars(r)
+    availableCars: list[Car] = [] 
+    for currentCar in allCars:
+        if currentCar.working == False:
+            availableCars.append(currentCar)
+    return availableCars
 
-def select_car() -> Dict:
-    # ("Selecting first available car (default logic)")
-    return AVAILABLE_CARS[0]
-
-
-async def notify_car_arrival(car_ws: WebSocket, path_to_user: List[List[int]]):
+async def notify_car_arrival(car_ws: WebSocket, path_to_user: list[list[int]]):
     # print(f"Sending car arrival path: {path_to_user}")
     await car_ws.send_json({
         "action": "start_trip",
@@ -61,7 +61,7 @@ async def wait_for_car_arrival(car_ws: WebSocket, websocket: WebSocket) -> bool:
             print("Recalculating path...")
     # print("Waiting for car arrival...")
 
-async def notify_client_car_arrived(websocket: WebSocket, car_id: str, path_to_destination: List[List[int]]):
+async def notify_client_car_arrived(websocket: WebSocket, car_id: str, path_to_destination: list[list[int]]):
     # print(f"Notifying client car {car_id} has arrived")
     await websocket.send_json({
         "action": "car_arrived",
@@ -78,7 +78,7 @@ async def wait_for_client_to_start(websocket: WebSocket):
             break
 
 
-async def send_trip_to_destination(car_ws: WebSocket, path_to_destination: List[List[int]]):
+async def send_trip_to_destination(car_ws: WebSocket, path_to_destination: list[list[int]]):
     # print(f"Sending path to destination: {path_to_destination}")
     await car_ws.send_json({
         "action": "start_trip",
@@ -108,9 +108,12 @@ async def notify_trip_finished(car_ws: WebSocket, websocket: WebSocket, car_id: 
 
 async def get_routing_info(origin, destination, websocket: WebSocket):
     try:
-        start_coords = [car["position"] for car in AVAILABLE_CARS]
-        # print(f"Connecting to routing service at {ROUTING_WS_URL}")
+        free_cars: list[Car] = available_cars()
+        start_coords: list[Tuple[int, int]] = []
+        for car in free_cars:
+            start_coords.append(car.position)       
 
+        # print(f"Connecting to routing service at {ROUTING_WS_URL}")
         async with websockets.connect(ROUTING_WS_URL) as routing_ws:
             # a. Rutes: cotxes → usuari
             await routing_ws.send(json.dumps({"start": start_coords, "goal": origin}))
@@ -124,8 +127,8 @@ async def get_routing_info(origin, destination, websocket: WebSocket):
                 await websocket.send_text("Invalid response from routing service (step 1)")
                 return None, None, None
 
-            selected_car = AVAILABLE_CARS[car_index]
-            car_id = selected_car["id"]
+            selected_car = free_cars[car_index]
+            car_id = selected_car.id
 
             # b. Ruta: usuari → destí
             await routing_ws.send(json.dumps({
@@ -159,16 +162,12 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     if not await validate_params(origin, destination, websocket):
         return
 
-#    car_id, path_to_user, path_to_destination = await get_routing_info(origin, destination, websocket)
-#    if not car_id:
-#        return
+    car_id, path_to_user, path_to_destination = await get_routing_info(origin, destination, websocket)
+    if not car_id:
+        return
 
-#    car_ws = manager["car"].get(car_id)
-    car_ws = manager["car"]["1234"]
-    path_to_user = [[10,10],[10,10],[10,10]]
-    path_to_destination = [[12, 12],[12, 12],[12, 12]]
-    selected_car = select_car()
-    car_id = selected_car["id"]
+    
+    car_ws = manager["car"].get(car_id)
 
     if not car_ws:
         await websocket.send_text(f"Error connecting with car {car_id}, please try again")
@@ -189,6 +188,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     await send_trip_to_destination(car_ws, path_to_destination)
     await wait_for_trip_completion(car_ws)
     await notify_trip_finished(car_ws, websocket, car_id)
+    await websocket.close()
 
 
 web_actions = {
