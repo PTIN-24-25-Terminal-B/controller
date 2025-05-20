@@ -1,0 +1,18 @@
+services:
+  backend:
+    image: api_controller
+    container_name: api_controller
+    build: .
+    attach: false
+    restart: always
+    networks:
+      - edgeb-network
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+    command: python3 ./src/app.py
+
+networks:
+  edgeb-network:
+    external: true

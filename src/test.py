@@ -1,33 +1,26 @@
-from models.path_model import Path, Point
-import models.path_model as path_model
 from models.car_model import Car
+from WSmanager import ConnectionManager
+import redis
 
-carId = 1234
+def get_redis_connection():
+    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
-point1 = Point(1.3, 3)
-point2 = Point(7.1, 3)
-print(point1.x, point1.y)
+r = get_redis_connection()
 
-print(point1)
 
-path1 = Path("asd123", [point1, point2])
+car1 = Car(
+id="car600",
+battery=85.5,
+position=[1, 2], # Simple coordinate pair instead of Point object
+working=True,
+currentPath=[[1, 3], [2, 3], [3, 3]] # List of coordinate pairs
+)
 
-print(path1)
+print(car1.id)
+print(Car.read_all_cars(r)[0].id)
 
-path1.addPoint(point1)
+#print (car1)
 
-print(path1)
+#{"action": "request_car", "params": {"origin": [10, 10], "destination": [10, 10]}}
 
-path1.changePoint(2, path_model.toPoint(2.2, 1.3))
-
-print(path1)
-
-path1.delPoint(1)
-
-print(path1)
-
-car1 = Car("", 1.1, path_model.toPoint(1.1, 2.2), True, path1)
-
-print("here is car print:")
-
-print(car1)
+#wscat -c ws://localhost:8000/ws/web/123

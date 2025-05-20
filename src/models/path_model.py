@@ -1,16 +1,16 @@
 # Import required modules
-from fastapi import HTTPException           # For handling HTTP-related errors (optional)
-from pydantic import BaseModel, Field        # For creating validation and serialization classes
+from pydantic import BaseModel, Field, RootModel        # For creating validation and serialization classes
 import json                                 # For converting Python objects to JSON strings
-import redis                                # For interacting with a Redis database
+import redis
+import redis.connection                                # For interacting with a Redis database
 
 # Represents a 2D point with float coordinates
-class Point(BaseModel):
-    x: float
-    y: float
-
+class Point(RootModel[tuple[int, int]]):
     def __str__(self):
         return json.dumps(self.model_dump())
+
+    def __repr__(self):
+        return self.__str__()
 
     def to_dict(self):
         return self.model_dump()
@@ -58,22 +58,23 @@ class Path(BaseModel):
 # Functions for Redis interaction
 # =============================
 
-def read_all_paths(redis_conn):
+def read_all_paths(redis_conn: redis.connection) -> list[Path]:
     try:
         keys = redis_conn.keys('path:*')
-        
-        paths = []
+        paths: list[Path] = []
+
         for key in keys:
             path_data = redis_conn.get(key)
             if path_data:
-                path_dict = json.loads(path_data)
-                paths.append(path_dict)
-        
+                path = Path.model_validate_json(path_data)
+                paths.append(path)
+
         return paths
+
     except Exception as e:
         raise ValueError(f"Error reading paths from database: {str(e)}")
 
-def create_path(newPath: Path, redis_conn):
+def create_path(newPath: Path, redis_conn: redis.connection):
     try:
         key = f"path:{newPath.id}"
         value = newPath.model_dump_json(indent=4)
@@ -85,7 +86,7 @@ def create_path(newPath: Path, redis_conn):
     except Exception as e:
         raise ValueError(f"Error adding path to database: {str(e)}")
 
-def new_path(newPath: Path, redis_conn):
+def update_path(newPath: Path, redis_conn: redis.connection):
     try:
         key = f"path:{newPath.id}"
         value = newPath.model_dump_json(indent=4)
@@ -97,6 +98,6 @@ def new_path(newPath: Path, redis_conn):
     except Exception as e:
         raise ValueError(f"Error updating path in database: {str(e)}")
 
-def delete_path(path_id: str, redis_conn):
+def delete_path(path_id: str, redis_conn: redis.connection):
     key = f"path:{path_id}"
     return redis_conn.delete(key) 
