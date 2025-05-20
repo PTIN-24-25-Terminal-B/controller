@@ -1,11 +1,26 @@
-from models.car_model import carModel
+from models.car_model import Car
+from WSmanager import ConnectionManager
+import redis
 
-carId = 1234
+def get_redis_connection():
+    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
-car1 = carModel(4, "sedan", id=carId)
+r = get_redis_connection()
 
-print(car1)
 
-car1.completeRun(12)
+car1 = Car(
+id="car600",
+battery=85.5,
+position=[1, 2], # Simple coordinate pair instead of Point object
+working=True,
+currentPath=[[1, 3], [2, 3], [3, 3]] # List of coordinate pairs
+)
 
-print(car1)
+print(car1.id)
+print(Car.read_all_cars(r)[0].id)
+
+#print (car1)
+
+#{"action": "request_car", "params": {"origin": [10, 10], "destination": [10, 10]}}
+
+#wscat -c ws://localhost:8000/ws/web/123

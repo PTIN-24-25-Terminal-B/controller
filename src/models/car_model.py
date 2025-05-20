@@ -1,49 +1,92 @@
+from pydantic import BaseModel, Field
+from models.path_model import Point
 import json
+import redis
 
-class carModel:
-    # variable types: carModel(integer, string, string, float, integer)
-    def __init__(self, carType, seatCount, id=None, mileage=0.0, completedRuns=0):
-        self.id = id
-        self.seatCount = seatCount
-        self.carType = carType
-        self.mileage = mileage
-        self.completedRuns = completedRuns
-        return
-    
-    # when reading the class as a string, returns de data in the model in json format
+from pydantic import BaseModel, Field
+import json
+import redis
+from typing import List, Tuple
+
+def get_redis_connection():
+    return redis.Redis(host='redis-db', port=6379, db=0, decode_responses=True)
+
+class Car(BaseModel):
+    id: str
+    battery: float
+    position: Tuple[int, int]  # Simple coordinate tuple instead of Point
+    working: bool = False
+    currentPath: List[Tuple[int, int]] = Field(default_factory=list)  # List of coordinate tuples
+
     def __str__(self):
-        return json.dumps(self.__dict__, indent=4)
+        return json.dumps(self.model_dump(mode="json"), indent=4)
+
+    def modifyCar(
+        self,
+        newBattery: float = None,
+        newPosition: Tuple[int, int] = None,
+        working: bool = None,
+        currentPath: List[Tuple[int, int]] = None
+    ):
+        if newBattery is not None:
+            self.battery = newBattery
+        if newPosition is not None:
+            self.position = newPosition
+        if working is not None:
+            self.working = working
+        if currentPath is not None:
+            self.currentPath = currentPath
+        return self
+
+    @staticmethod
+    def get_car(car_id: str, redis_conn):
+        data = redis_conn.get(f"car:{car_id}")
+        if data:
+            car_data = json.loads(data)
+            # No need to convert position or currentPath as they're already in the right format
+            return Car(**car_data)
+        return None
+
+    @staticmethod
+    def read_all_cars(redis_conn):
+        keys = redis_conn.keys("car:*")
+        cars = []
+        for key in keys:
+            raw = redis_conn.get(key)
+            if raw:
+                data = json.loads(raw)
+                # No need to convert position or currentPath
+                car = Car(**data)
+                cars.append(car)
+        return cars
+
+    @staticmethod
+    def create_car(car: "Car", redis_conn):
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=4)
+        if redis_conn.set(key, value, nx=True):
+            return car
+        else:
+            raise ValueError("Car with given id already exists")
+
+    @staticmethod
+    def update_car(car: "Car", redis_conn):
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=4)
+        if redis_conn.set(key, value, xx=True):
+            return car
+        else:
+            raise ValueError("Car with given id does not exist")
+
+    @staticmethod
+    def delete_car(car_id: str):
+        redis_conn = get_redis_connection()
+        return redis_conn.delete(f"car:{car_id}")
     
-    # adds a new completed run, including it's length in the car mileage
-    def completeRun(self, miles=0.0):
-        self.mileage+=miles
-        self.completedRuns+=1
-        return
-    
-    # allows to modify any of the stored data in the car model. Warning, changing it's id might create some errors
-    # like the target car not being found, or modifying the values of another car
-    def modifyCar(self, newId=None, newType=None, newSeat=None, newMileage=None, newRuns=None):
-        if newId is not None:
-            self.id = newId
-        if newType is not None:
-            self.carType = newType
-        if newSeat is not None:
-            self.seatCount = newSeat
-        if newMileage is not None:
-            self.mileage = newMileage
-        if newRuns is not None:
-            self.completedRuns = newRuns
-        return
-    
-    # method to delete the car model
-    def __del__(self):
-        return
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "carType": self.carType,
-            "seatCount": self.seatCount,
-            "mileage": self.mileage,
-            "completedRuns": self.completedRuns
-        }
+    @staticmethod
+    def car_connection(car: "Car"):
+        redis_conn = get_redis_connection()
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=4)
+        redis_conn.set(key, value)
+        return car
