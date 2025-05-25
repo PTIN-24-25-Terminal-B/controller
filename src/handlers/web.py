@@ -59,6 +59,7 @@ async def get_new_route(start_coords: list[tuple[float, float]], destination: tu
 
 async def request_car(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     try:
+        user_id = params.get("userId")
         origin = params.get("origin")
         destination = params.get("destination")
 
@@ -87,11 +88,11 @@ async def request_car(client_id: str, websocket: WebSocket, params: dict, manage
 
         await websocket.send_json({
             "action": "car_selected",
-            "params": {"userId": client_id, "carId": car_id, "path": path_to_user}
+            "params": {"userId": user_id, "carId": car_id, "path": path_to_user}
         })
 
         User.write_user(User(
-            id = client_id,
+            id = user_id,
             state = UserState.WAITING,
             carId = car_id,
             origin = origin,
@@ -103,32 +104,37 @@ async def request_car(client_id: str, websocket: WebSocket, params: dict, manage
         return e
 
 async def continue_to_destination(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
-    client = User.read_user(client_id)
-    selected_car: Car = Car.read_car_id(client.carId)
+    try:
+        user_id = params.get("userId")
     
-    car_ws = manager["car"][selected_car.id]
+        client = User.read_user(user_id)
+        selected_car: Car = Car.read_car_id(client.carId)
+        
+        car_ws = manager["car"][selected_car.id]
 
-    if selected_car.state == CarState.WAITING:
+        if selected_car.state == CarState.WAITING:
 
-        car_index, path_to_destination = get_new_route(selected_car.position, client.destination)
+            car_index, path_to_destination = get_new_route(selected_car.position, client.destination)
 
-        car_ws.send_json({
-            "action": "start_trip",
-            "params": {"path": path_to_destination}
-        })
+            car_ws.send_json({
+                "action": "start_trip",
+                "params": {"path": path_to_destination}
+            })
 
-        User.write_user(User(
-            id = client_id,
-            state = UserState.TRAVELING,
-            carId = client.carId,
-            origin = client.origin,
-            destination = client.destination
-        ))
-    else:
-        WebSocket.send_text("error: car not arrived yet")
+            User.write_user(User(
+                id = user_id,
+                state = UserState.TRAVELING,
+                carId = client.carId,
+                origin = client.origin,
+                destination = client.destination
+            ))
+        else:
+            WebSocket.send_text("error: car not arrived yet")
+            return
+
         return
-
-    return
+    except Exception as e:
+        return e
 
 web_actions = {
     "request_car": request_car,
