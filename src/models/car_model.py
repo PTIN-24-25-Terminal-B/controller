@@ -21,7 +21,7 @@ class Car(BaseModel):
     currentPath: Optional[list[tuple[int, int]]]
 
     def __str__(self):
-        return json.dumps(self.model_dump(mode="json"), indent=2)
+        return json.dumps(self.model_dump(), indent=2)
 
     def modifyCar(
         self,

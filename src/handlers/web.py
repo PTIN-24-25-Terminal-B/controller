@@ -57,7 +57,7 @@ async def get_new_route(start_coords: list[tuple[float, float]], destination: tu
     except Exception as e:
         return e
 
-async def request_car(client_id: str, websocket: WebSocket, params: Dict, manager: ConnectionManager):
+async def request_car(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     try:
         origin = params.get("origin")
         destination = params.get("destination")
@@ -102,7 +102,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: Dict, manage
     except Exception as e:
         return e
 
-async def start_trip(client_id: str, websocket: WebSocket, params: Dict, manager: ConnectionManager):
+async def continue_to_destination(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     client = User.read_user(client_id)
     selected_car: Car = Car.read_car_id(client.carId)
     
@@ -116,6 +116,14 @@ async def start_trip(client_id: str, websocket: WebSocket, params: Dict, manager
             "action": "start_trip",
             "params": {"path": path_to_destination}
         })
+
+        User.write_user(User(
+            id = client_id,
+            state = UserState.TRAVELING,
+            carId = client.carId,
+            origin = client.origin,
+            destination = client.destination
+        ))
     else:
         WebSocket.send_text("error: car not arrived yet")
         return
@@ -124,5 +132,5 @@ async def start_trip(client_id: str, websocket: WebSocket, params: Dict, manager
 
 web_actions = {
     "request_car": request_car,
-    "start_trip": start_trip
+    "start_trip": continue_to_destination
 }

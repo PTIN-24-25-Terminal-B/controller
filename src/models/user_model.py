@@ -1,10 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from enum import Enum
 import redis
 import json
-
-from models.car_model import Car
 
 def get_redis_connection():
     return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
