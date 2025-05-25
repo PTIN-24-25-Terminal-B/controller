@@ -1,165 +1,128 @@
 import json
-import time
-from fastapi import WebSocket
-from typing import List, Dict
 import websockets
+from fastapi import WebSocket
+from typing import Dict
 from WSmanager import ConnectionManager
-
-
-#Provisional hasta que este connexion a BD
-AVAILABLE_CARS = [
-    {"id": "1234", "position": [15, 66]},
-    {"id": "car2", "position": [12, 91]},
-    {"id": "car3", "position": [48, 66]},
-    {"id": "car4", "position": [55, 93]},
-    {"id": "car5", "position": [10, 66]},
-    {"id": "car6", "position": [49, 87]},
-]
+from models.car_model import Car, CarState
+from models.user_model import User, UserState
+import redis
 
 ROUTING_WS_URL = "ws://192.168.20.7:5000/path"
 
+# Temporary # connection for the database while con pool is missing
 
-def is_valid_coord(coord: List) -> bool:
+def get_redis_connection():
+    return redis.Redis(host='redis-db', port=6379, db=0, decode_responses=True)
+
+
+def is_valid_coord(coord: list) -> bool:
     return (
-        isinstance(coord, list) and
-        len(coord) == 2 and
-        all(isinstance(x, (int, float)) for x in coord)
+        isinstance(coord, list)
+        and len(coord) == 2
+        and all(isinstance(x, (int, float)) for x in coord)
     )
 
 
-async def request_car(client_id: str, websocket: WebSocket, params: Dict, manager: ConnectionManager):
-    print(1)
-    origin = params.get("origin")
-    destination = params.get("destination")
-
-    print(0)
+async def validate_params(origin, destination, websocket: WebSocket) -> bool:
+    # print(f"Validating params: origin={origin}, destination={destination}")
     if not (is_valid_coord(origin) and is_valid_coord(destination)):
         await websocket.send_text("Invalid or missing origin/destination format")
+        return False
+    return True
+
+def available_cars() -> list[Car]:
+    r = get_redis_connection()
+    allCars: list[Car] = Car.read_all_cars(r)
+    availableCars: list[Car] = [] 
+    for currentCar in allCars:
+        if currentCar.working == False:
+            availableCars.append(currentCar)
+    return availableCars
+
+async def get_new_route(start_coords: list[tuple[float, float]], destination: tuple[int, int]):
+    try:
+
+        async with websockets.connect(ROUTING_WS_URL) as routing_ws:
+
+            await routing_ws.send(json.dumps({"start": start_coords, "goal": destination}))
+            result_to_user = json.loads(await routing_ws.recv())
+
+            car_index = result_to_user.get("car")
+            path_to_user = result_to_user.get("path")
+
+            if car_index is None or path_to_user is None:
+                raise("error in pathing")
+            
+        return car_index, path_to_user
+    except Exception as e:
+        return e
+
+async def request_car(client_id: str, websocket: WebSocket, params: Dict, manager: ConnectionManager):
+    try:
+        origin = params.get("origin")
+        destination = params.get("destination")
+
+        if not await validate_params(origin, destination, websocket):
+            return
+
+        free_cars: list[Car] = available_cars()
+        start_coords: list[tuple[float, float]] = []
+        for car in free_cars:
+            start_coords.append(car.position)
+
+        car_index, path_to_user = await get_new_route(start_coords, origin)
+
+        car_id = free_cars[car_index].id
+        
+        car_ws = manager["car"].get(car_id)
+
+        if not car_ws:
+            Car.delete_car(car_id)
+            raise(f"error connecting with car {car_id}, please try again")
+        else:
+            await car_ws.send_json({
+                "action": "start_trip",
+                "params": {"path": path_to_user}
+            })
+
+        await websocket.send_json({
+            "action": "car_selected",
+            "params": {"userId": client_id, "carId": car_id, "path": path_to_user}
+        })
+
+        User.write_user(User(
+            id = client_id,
+            state = UserState.WAITING,
+            carId = car_id,
+            origin = origin,
+            destination = destination
+        ))
+        
+        return
+    except Exception as e:
+        return e
+
+async def start_trip(client_id: str, websocket: WebSocket, params: Dict, manager: ConnectionManager):
+    client = User.read_user(client_id)
+    selected_car: Car = Car.read_car_id(client.carId)
+    
+    car_ws = manager["car"][selected_car.id]
+
+    if selected_car.state == CarState.WAITING:
+
+        car_index, path_to_destination = get_new_route(selected_car.position, client.destination)
+
+        car_ws.send_json({
+            "action": "start_trip",
+            "params": {"path": path_to_destination}
+        })
+    else:
+        WebSocket.send_text("error: car not arrived yet")
         return
 
-#   this is temporary for testing
-
-    car_ws = manager["car"]["1234"]
-    print("123123")
-    path_to_user = [[10,10],[10,10],[10,10]]
-    path_to_destination = [[12, 12],[12, 12],[12, 12]]
-    selected_car = AVAILABLE_CARS[0]
-    car_id = selected_car["id"]
-
-#    start_coords = [car["position"] for car in AVAILABLE_CARS]
-#
-#    try:
-#        async with websockets.connect(ROUTING_WS_URL) as routing_ws:
-#            # a. Rutas coches → usuario
-#            await routing_ws.send(json.dumps({"start": start_coords, "goal": origin}))
-#            result_to_user = json.loads(await routing_ws.recv())
-#
-#            car_index = result_to_user.get("car")
-#            path_to_user = result_to_user.get("path")
-#
-#            if car_index is None or path_to_user is None:
-#                await websocket.send_text("Invalid response from routing service")
-#                return
-#
-#            selected_car = AVAILABLE_CARS[car_index]
-#            car_id = selected_car["id"]
-#
-#            car_ws = manager.get("car", car_id)
-#            if car_ws:
-#                await websocket.send_josn({
-#                    "action": "car_selected",
-#                    "params": {
-#                        "carId": car_id
-#                    }
-#                })  
-#            else:
-#                await websocket.send_text(f"Error connecting with car, please try again")
-#                return
-#
-#            # b. Ruta usuario → destino
-#            await routing_ws.send(json.dumps({
-#                "action": "calculate_routes",
-#                "params": {
-#                    "start": origin,
-#                    "goal": destination
-#                }
-#            }))
-#            path_to_destination = json.loads(await routing_ws.recv())
-#
-#    except Exception as e:
-#        await websocket.send_text(f"Routing service error: {str(e)}")
-#        return
-
-    # ➤ Enviar la primera ruta al coche
-    print(manager["car"]["1234"])
-    await car_ws.send_json({
-        "action": "start_trip",
-        "params": {
-            "path": path_to_user
-        }
-    })
-
-    # ➤ Esperar confirmación del coche (llegada al usuario)
-    
-    time.sleep(2)
-    
-    while True:
-        message = await car_ws.receive_json()
-        if message.get("action") == "trip_completed":
-            break
-        if message.get("action") == "trip_cancelled":
-            await websocket.send_json({
-                "action": "trip_cancelled"
-            })
-            return
-        if message.get("action") == "recalc_path":
-            #call ia to recalc path
-            print()
-
-    # ➤ Avisar al cliente web que el coche ha llegado
-    await websocket.send_json({
-        "action": "car_arrived",
-        "params": {
-            "car_id": car_id
-        }
-    })
-
-    # ➤ Esperar confirmación del cliente para iniciar viaje
-    while True:
-        message = await websocket.receive_json()
-        if message.get("action") == "start_trip":
-            break
-
-    # ➤ Enviar ruta al coche para llevar al usuario al destino
-    await car_ws.send_json({
-        "action": "start_trip",
-        "params": {
-            "path": path_to_destination.get("path")
-        }
-    })
-
-    # ➤ Esperar confirmación del coche (viaje finalizado)
-    while True:
-        message = await car_ws.receive_json()
-        if message.get("action") == "trip_completed":
-            break
-        if message.get("action") == "recalc_path":
-            #call ia to recalc path
-            print()
-
-    await car_ws.send_json({
-        "action": "trip_finished",
-    })
-
-    # ➤ Avisar al cliente que el viaje terminó
-    await websocket.send_json({
-        "action": "trip_finished",
-        "params": {
-            "car_id": car_id
-        }
-    })
-
+    return
 
 web_actions = {
-    "request_car": request_car
+    "request_car": request_car,
+    "start_trip": start_trip
 }

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 from routes.car_routes import router as car_router
-from routes.path_routes import router as path_router
+from routes.chat_routes import router as chat_router
 from routes.ws_routes import router as ws_router
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,7 +17,7 @@ app.add_middleware(
 
 # Include routes from carRoutes.py
 app.include_router(car_router)
-app.include_router(path_router)
+app.include_router(chat_router)
 app.include_router(ws_router)
 
 @app.get("/")
