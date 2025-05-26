@@ -4,6 +4,9 @@ import redis
 from typing import Optional
 from enum import Enum
 
+def get_redis_connection():
+    return redis.Redis(host='192.168.20.7', port=6379, db=0, decode_responses=True)
+
 class CarState(Enum):
     IDLE = "idle"
     WAITING = "waiting"
@@ -11,9 +14,6 @@ class CarState(Enum):
 
     def __str__(self):
         return self.value
-
-def get_redis_connection():
-    return redis.Redis(host='192.168.20.7', port=6379, db=0, decode_responses=True)
 
 class Car(BaseModel):
     id: str

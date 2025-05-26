@@ -11,7 +11,7 @@ async def update_car(client_id: str, websocket: WebSocket, params: dict, manager
     # Add a message type to the data so web clients know what kind of update this is
     message = {
         "action": "car_connected",
-        "params": updated_car.model_dump_json(mode=json)
+        "params": updated_car.model_dump(mode='json')
     }
     
     # Send notification to all connected web clients
