@@ -48,12 +48,7 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, client_id: 
     print(f"{client_type.upper()} client [{client_id}] connected")
 
     try:
-        if client_type == "web":
-            print("connected_cars: ", manager["car"])
-            await handle_client(client_id, client_type, websocket)
-        else:
-            while True:
-                await asyncio.sleep(5)
+        await handle_client(client_id, client_type, websocket)
     except WebSocketDisconnect:
         manager.remove(client_type, client_id)
         print(f"{client_type.upper()} client [{client_id}] disconnected")

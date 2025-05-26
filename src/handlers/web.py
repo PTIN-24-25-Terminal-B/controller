@@ -34,19 +34,13 @@ def available_cars() -> list[Car]:
 
 async def get_new_route(start_coords: list[tuple[float, float]], destination: tuple[int, int]):
     try:
-        print("a")
         async with websockets.connect(ROUTING_WS_URL) as routing_ws:
-            print(start_coords)
+            print(start_coords, destination)
             await routing_ws.send(json.dumps({"start": start_coords, "goal": destination}))
-            print("a2")
             result_to_user = json.loads(await routing_ws.recv())
-            print(result_to_user)
 
             car_index = result_to_user.get("car")
-            print("a4")
             path_to_user = result_to_user.get("path")
-            print("a5")
-
             if car_index is None or path_to_user is None:
                 print(car_index, path_to_user)
                 raise("error in pathing")
@@ -68,7 +62,6 @@ async def request_car(client_id: str, websocket: WebSocket, params: dict, manage
             start_coords.append(car.position)
 
         car_index, path_to_user = await get_new_route(start_coords, origin)
-        print("asdasdasdasdf,gjhasdrfglkjasrflkHJNKL:DSVChkovdfpsza")
 
         selected_car = free_cars[car_index]
         car_id = selected_car.id
@@ -89,17 +82,13 @@ async def request_car(client_id: str, websocket: WebSocket, params: dict, manage
             "params": {"userId": user_id, "carId": car_id, "path": path_to_user}
         })
 
-        print(selected_car)
-
         selected_car.userId = user_id
         selected_car.currentPath = path_to_user
         selected_car.state = CarState.TRAVELING
 
-        print(selected_car)
-
         Car.write_car(selected_car)
 
-        print(selected_car)
+        print(Car.read_car(car_id))
 
         User.write_user(User(
             id = user_id,
@@ -108,6 +97,8 @@ async def request_car(client_id: str, websocket: WebSocket, params: dict, manage
             origin = origin,
             destination = None
         ))
+
+        print(User.read_user(user_id))
         
         return
     except Exception as e:
@@ -120,16 +111,22 @@ async def continue_to_destination(client_id: str, websocket: WebSocket, params: 
     
         client = User.read_user(user_id)
         selected_car: Car = Car.read_car(client.carId)
-        
+        origin: list[tuple[float, float]] = []
+        origin.append(selected_car.position)
         car_ws = manager["car"][selected_car.id]
 
         if selected_car.state == CarState.WAITING:
 
-            car_index, path_to_destination = get_new_route(selected_car.position, destination)
+            car_index, path_to_destination = await get_new_route(origin, destination)
 
-            car_ws.send_json({
+            await car_ws.send_json({
                 "action": "start_trip",
                 "params": {"path": path_to_destination}
+            })
+
+            await websocket.send_json({
+                "action": "car_selected",
+                "params": {"userId": user_id, "carId": selected_car.id, "path": path_to_destination}
             })
 
             selected_car.userId = user_id
@@ -159,15 +156,19 @@ async def trip_finished(client_id: str, websocket: WebSocket, params: dict, mana
         user = User.read_user(user_id)
         car_ws = manager["car"][user.carId]
 
-        car_ws.send_json({"action": "trip_finished"})
+        await car_ws.send_json({"action": "trip_finished"})
 
         User.write_user(User(
             id = user_id,
             state = UserState.IDLE
         ))
 
-        Car.set_state(user.carId, CarState.IDLE)
-
+        selected_car: Car = Car.read_car(user.carId)
+        selected_car.userId = None
+        selected_car.currentPath = None
+        selected_car.state = CarState.IDLE
+        Car.write_car(selected_car)
+        print(Car.read_car(user.carId), User.read_user(user_id))
         return
     except:
         return

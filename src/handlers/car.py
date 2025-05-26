@@ -26,6 +26,7 @@ async def update_car(client_id: str, websocket: WebSocket, params: dict, manager
 
 async def trip_completed(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     current_car: Car = Car.read_car(client_id)
+    print(f"Trip completed for car {current_car.id} with params: {params}")
     
     if not current_car:
         websocket.send_json({"error": "car not in database"})
@@ -37,18 +38,22 @@ async def trip_completed(client_id: str, websocket: WebSocket, params: dict, man
     user_id = current_car.userId
     user = User.read_user(user_id)
     client_ws = manager["web"][current_car.userId]
+    print(f"User {user_id} state: {user.state}")
+    if not client_ws:
+        await websocket.send_json({"error": "web client not connected"})
+        return
     if user.state == UserState.WAITING:
-        client_ws.send_json({
+        await client_ws.send_json({
             "action": "car_arrived",
             "params": {"car_id": current_car.id}
         })
     elif user.state == UserState.TRAVELING:
-        client_ws.send_json({
+        await client_ws.send_json({
             "action": "reached_destination",
             "params": {"car_id": current_car.id}
         })
     else:
-        websocket.send_json({"error": "user not correct"})
+        await websocket.send_json({"error": "user not correct"})
         return
     
     Car.set_state(current_car.id, CarState.WAITING)

@@ -13,7 +13,7 @@ class CarState(Enum):
         return self.value
 
 def get_redis_connection():
-    return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    return redis.Redis(host='192.168.20.7', port=6379, db=0, decode_responses=True)
 
 class Car(BaseModel):
     id: str

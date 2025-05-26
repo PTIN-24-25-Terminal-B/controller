@@ -11,26 +11,12 @@ car1 = Car(
     currentPath=None
 )
 
-car2 = Car(
-    id="car2",
-    battery=50.0,
-    position=(0, 0)
-)
-
 Car.write_car(car1)
-Car.write_car(car2)
 
-car3 = Car.read_car("car1")
-
-if car3.state == CarState.IDLE:
-    print(car3)
-
-Car.delete_car("car2")
-
-cars: list[Car] = Car.read_all_cars()
-for car in cars:
-    if car.state == CarState.IDLE:
-        print(car)
+User.write_user(User(
+    id="user1"
+))
+print(User.read_user("user1"))
 
 manager = get_manager()
 
