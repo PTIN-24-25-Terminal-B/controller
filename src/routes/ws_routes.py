@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from handlers.car import car_actions
-from handlers.web2 import web_actions
+from handlers.web import web_actions
 from handlers.ia import ia_actions
 from socket_manager import get_manager
 

@@ -1,5 +1,6 @@
 from WSmanager import ConnectionManager
 from models.car_model import Car, CarState
+from models.user_model import User, UserState
 from fastapi import WebSocket
 import json
 
@@ -21,29 +22,44 @@ async def update_car(client_id: str, websocket: WebSocket, params: dict, manager
         except Exception as e:
             print(f"Error sending to web client {client_id}: {str(e)}")
     
-    return Car.car_connection(updated_car)
+    return Car.write_car(updated_car)
 
 async def trip_completed(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     current_car: Car = Car.read_car(client_id)
     
     if not current_car:
-        websocket.send_text("error: car not in database")
+        websocket.send_json({"error": "car not in database"})
         return
-    elif current_car.state != CarState.TRAVELING:
-        websocket.send_text("error: car was not in a trip")
-    else:
-        client_ws = manager["web"][current_car.userId]
+    
+    if current_car.state != CarState.TRAVELING:
+        websocket.send_json({"error": "car not in trip"})
+        return
+    user_id = current_car.userId
+    user = User.read_user(user_id)
+    client_ws = manager["web"][current_car.userId]
+    if user.state == UserState.WAITING:
         client_ws.send_json({
             "action": "car_arrived",
             "params": {"car_id": current_car.id}
         })
+    elif user.state == UserState.TRAVELING:
+        client_ws.send_json({
+            "action": "reached_destination",
+            "params": {"car_id": current_car.id}
+        })
+    else:
+        websocket.send_json({"error": "user not correct"})
+        return
+    
+    Car.set_state(current_car.id, CarState.WAITING)
+
     return
 
 async def change_path(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     return
 
 car_actions = {
-    "trip_completed": trip_completed,
     "update_car": update_car,
+    "trip_completed": trip_completed,
     "change_path": change_path
 }

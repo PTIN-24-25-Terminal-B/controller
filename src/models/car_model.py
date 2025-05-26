@@ -9,6 +9,9 @@ class CarState(Enum):
     WAITING = "waiting"
     TRAVELING = "traveling"
 
+    def __str__(self):
+        return self.value
+
 def get_redis_connection():
     return redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
@@ -17,11 +20,11 @@ class Car(BaseModel):
     battery: float
     position: tuple[int, int]
     state: CarState = CarState.IDLE
-    userId: Optional[str]
-    currentPath: Optional[list[tuple[int, int]]]
+    userId: Optional[str] = None
+    currentPath: Optional[list[tuple[int, int]]] = None
 
     def __str__(self):
-        return json.dumps(self.model_dump(), indent=2)
+        return self.model_dump_json(indent=2)
 
     def modifyCar(
         self,
@@ -49,18 +52,6 @@ class Car(BaseModel):
 #            return car_data
 #        return None
 #
-#    @staticmethod
-#    def read_all_cars(redis_conn):
-#        keys = redis_conn.keys("car:*")
-#        cars = []
-#        for key in keys:
-#            raw = redis_conn.get(key)
-#            if raw:
-#                data = json.loads(raw)
-#                # No need to convert position or currentPath
-#                car = Car(**data)
-#                cars.append(car)
-#        return cars
 #
 #    @staticmethod
 #    def create_car(car: "Car", redis_conn):
@@ -86,7 +77,7 @@ class Car(BaseModel):
         return redis_conn.delete(f"car:{car_id}")
     
     @staticmethod
-    def car_connection(car: "Car"):
+    def write_car(car: "Car"):
         redis_conn = get_redis_connection()
         key = f"car:{car.id}"
         value = car.model_dump_json(indent=2)
@@ -94,6 +85,33 @@ class Car(BaseModel):
         return car
 
     @staticmethod
-    def read_car_id(car_id: str):
+    def read_car(car_id: str):
         redis_conn = get_redis_connection()
-        return redis_conn.get(f"car:{car_id}")
+        car = redis_conn.get(f"car:{car_id}")
+        if car == None:
+            return None
+        else:
+            return Car.model_validate_json(car)
+    
+    @staticmethod
+    def read_all_cars():
+        redis_conn = get_redis_connection()
+        keys = redis_conn.keys("car:*")
+        cars = []
+        for key in keys:
+            raw = redis_conn.get(key)
+            if raw:
+                car = Car.model_validate_json(raw)
+                cars.append(car)
+        return cars
+
+    @staticmethod
+    def set_state(car_id: str, new_state: CarState):
+        redis_conn = get_redis_connection()
+        car: Car = Car.read_car(car_id)
+        if car == None:
+            return None
+        car.state = new_state
+        key = f"car:{car.id}"
+        value = car.model_dump_json(indent=2)
+        return redis_conn.set(key, value)

@@ -49,7 +49,7 @@ async def car_connection(car: Car):
             print(f"Error sending to web client {client_id}: {str(e)}")
     
     # Process the car connection logic
-    return Car.car_connection(car)
+    return Car.write_car(car)
 
 
 @router.delete("/{car_id}")
