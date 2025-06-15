@@ -1,7 +1,7 @@
 from models.user_model import User, UserState
 from models.car_model import Car, CarState
 from socket_manager import get_manager
-
+import pydantic
 #car1 = Car(
 #    id="car1",
 #    battery=85.0,
@@ -16,7 +16,7 @@ from socket_manager import get_manager
 #User.write_user(User(
 #    id="user1"
 #))
-print(Car.read_car("car42"))
+print(Car.read_all_cars())
 #
 #manager = get_manager()
 #

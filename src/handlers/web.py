@@ -41,6 +41,7 @@ async def get_new_route(start_coords: list[tuple[float, float]], destination: tu
 
             car_index = result_to_user.get("car")
             path_to_user = result_to_user.get("path")
+            print(car_index, path_to_user)
             if car_index is None or path_to_user is None:
                 print(car_index, path_to_user)
                 raise("error in pathing")
@@ -74,7 +75,7 @@ async def request_car(client_id: str, websocket: WebSocket, params: dict, manage
         else:
             await car_ws.send_json({
                 "action": "start_trip",
-                "params": {"path": path_to_user}
+                "params": {"path": path_to_user, "userId": user_id}
             })
 
         await websocket.send_json({
@@ -121,7 +122,7 @@ async def continue_to_destination(client_id: str, websocket: WebSocket, params: 
 
             await car_ws.send_json({
                 "action": "start_trip",
-                "params": {"path": path_to_destination}
+                "params": {"path": path_to_destination, "userId" : user_id}
             })
 
             await websocket.send_json({
