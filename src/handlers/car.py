@@ -1,8 +1,11 @@
 from WSmanager import ConnectionManager
+import websockets
 from models.car_model import Car, CarState
 from models.user_model import User, UserState
 from fastapi import WebSocket
 import json
+
+ROUTING_WS_URL = "ws://192.168.20.7:5000/recalculate"
 
 async def update_car(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
     
@@ -48,6 +51,39 @@ async def trip_completed(client_id: str, websocket: WebSocket, params: dict, man
     return
 
 async def change_path(client_id: str, websocket: WebSocket, params: dict, manager: ConnectionManager):
+    try:
+        async with websockets.connect(ROUTING_WS_URL) as routing_ws:
+            position = params.get("position")
+            current_car = Car.read_car(client_id)
+            await routing_ws.send(json.dumps({"position": position, "current_path": current_car.currentPath}))
+            response = json.loads(await routing_ws.recv())
+            new_path = response.get("new_path")
+            print(f"New path for car {client_id}: {new_path}")
+            if not new_path:
+                raise Exception("Error in pathing, no new path received")
+            current_car.currentPath = new_path
+            Car.write_car(current_car)
+            user_id = current_car.userId
+            if not websocket:
+                Car.delete_car(client_id)
+                raise(f"connection with car {client_id} lost")
+            else:
+                await websocket.send_json({
+                    "action": "start_trip",
+                    "params": {"path": new_path, "userId": user_id}
+                })
+            message = {
+                "action": "path_changed",
+                "params": {
+                    "carId": client_id,
+                    "newPath": new_path
+                }
+            }
+            user_ws = manager["web"].get(user_id)
+            if user_ws:
+                await user_ws.send_json(message)
+    except Exception as e:
+        return e
     return
 
 car_actions = {
