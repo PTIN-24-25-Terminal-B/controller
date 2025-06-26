@@ -37,7 +37,12 @@ async def handle_client(client_id: str, client_type: str, websocket: WebSocket):
             else:
                 await websocket.send_text(f"Unknown action: {action}")
         except Exception as e:
-            await websocket.send_text(f"Error processing message: {str(e)}")
+            if isinstance(e, WebSocketDisconnect):
+                print(f"{client_type.upper()} client [{client_id}] disconnected")
+                manager.remove(client_type, client_id)
+                break
+            else:
+                print(f"Error processing message from {client_type} client [{client_id}]: {str(e)}")
 
 @router.websocket("/ws/{client_type}/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_type: str, client_id: str):
